@@ -28,6 +28,7 @@ class AppleSpeechProvider: SpeechRecognitionProvider {
 
     private var finalTranscription: String = ""
     private var allTranscriptions: [String] = [] // Store all segments
+    private var lastPartialResult: String = "" // Track last partial to detect resets
 
     // MARK: - Initialization
 
@@ -107,6 +108,7 @@ class AppleSpeechProvider: SpeechRecognitionProvider {
         // Start recognition task
         finalTranscription = ""
         allTranscriptions = []
+        lastPartialResult = ""
 
         recognitionTask = recognizer.recognitionTask(with: request) { [weak self] result, error in
             guard let self = self else { return }
@@ -126,19 +128,30 @@ class AppleSpeechProvider: SpeechRecognitionProvider {
             if let result = result {
                 let transcription = result.bestTranscription.formattedString
 
+                // Detect if recognition was reset (new result is much shorter than last)
+                // This happens when Apple Speech starts a new "segment"
+                if !self.lastPartialResult.isEmpty &&
+                   transcription.count < self.lastPartialResult.count / 2 &&
+                   self.lastPartialResult.count > 3 {
+                    // Save the previous segment before it gets lost
+                    print("[AppleSpeech] Detected reset, saving segment: \(self.lastPartialResult)")
+                    self.allTranscriptions.append(self.lastPartialResult)
+                }
+
+                self.lastPartialResult = transcription
+
                 // If this is a final result for this segment, save it
                 if result.isFinal {
-                    if !transcription.isEmpty {
+                    if !transcription.isEmpty && !self.allTranscriptions.contains(transcription) {
                         self.allTranscriptions.append(transcription)
                         print("[AppleSpeech] Final segment: \(transcription)")
                     }
-                    self.finalTranscription = self.allTranscriptions.joined(separator: " ")
-                } else {
-                    // For partial results, show current segment + previous segments
-                    let previousText = self.allTranscriptions.joined(separator: " ")
-                    let fullText = previousText.isEmpty ? transcription : previousText + " " + transcription
-                    self.finalTranscription = fullText
                 }
+
+                // Build full transcription from all segments + current partial
+                let previousText = self.allTranscriptions.joined(separator: "")
+                let currentText = result.isFinal ? "" : transcription
+                self.finalTranscription = previousText + currentText
 
                 let speechResult = SpeechRecognitionResult(
                     text: self.finalTranscription,
@@ -161,7 +174,18 @@ class AppleSpeechProvider: SpeechRecognitionProvider {
         recognitionRequest?.endAudio()
 
         // Wait a moment for final results
-        try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+        try await Task.sleep(nanoseconds: 200_000_000) // 0.2 seconds
+
+        // Save any remaining partial result
+        if !lastPartialResult.isEmpty && !allTranscriptions.contains(lastPartialResult) {
+            print("[AppleSpeech] Saving last partial: \(lastPartialResult)")
+            allTranscriptions.append(lastPartialResult)
+        }
+
+        // Build final result
+        finalTranscription = allTranscriptions.joined(separator: "")
+        print("[AppleSpeech] All segments: \(allTranscriptions)")
+        print("[AppleSpeech] Final combined: \(finalTranscription)")
 
         // Cancel task
         recognitionTask?.cancel()
@@ -170,6 +194,7 @@ class AppleSpeechProvider: SpeechRecognitionProvider {
         recognitionRequest = nil
         recognitionTask = nil
         audioEngine = nil
+        lastPartialResult = ""
 
         return finalTranscription
     }
