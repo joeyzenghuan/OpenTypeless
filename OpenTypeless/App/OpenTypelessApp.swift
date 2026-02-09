@@ -22,6 +22,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private let hotkeyManager = HotkeyManager.shared
     private let floatingPanel = FloatingPanelController.shared
     private var speechProvider: AppleSpeechProvider?
+    private var aiProvider: AzureOpenAIProvider?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         print("========================================")
@@ -137,7 +138,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func setupSpeechRecognition() {
         print("[App] Setting up speech recognition...")
-        print("[App] Using Apple Speech Framework (AI processing disabled by default)")
+        print("[App] Using Apple Speech Framework")
 
         speechProvider = AppleSpeechProvider()
 
@@ -149,6 +150,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         speechProvider?.onError { error in
             print("[App] ❌ Speech recognition error: \(error.localizedDescription)")
         }
+
+        // Setup AI provider
+        aiProvider = AzureOpenAIProvider()
+        let aiEnabled = UserDefaults.standard.bool(forKey: "aiPolishEnabled")
+        print("[App] AI polish: \(aiEnabled ? "enabled" : "disabled")")
 
         print("[App] ✅ Speech recognition setup complete")
     }
@@ -193,17 +199,44 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Stop speech recognition and get result
         Task {
             do {
-                let result = try await speechProvider?.stopRecognition() ?? ""
+                var result = try await speechProvider?.stopRecognition() ?? ""
                 print("[App] ✅ Final transcription: \(result)")
 
-                if !result.isEmpty {
-                    floatingPanel.showResult(result)
-                    // Insert text at cursor position
-                    await insertText(result)
-                } else {
+                if result.isEmpty {
                     print("[App] ⚠️ No transcription result")
                     floatingPanel.hidePanel()
+                    return
                 }
+
+                // Check if AI polish is enabled
+                let aiEnabled = UserDefaults.standard.bool(forKey: "aiPolishEnabled")
+
+                if aiEnabled {
+                    print("[App] 🤖 AI polish enabled, processing...")
+                    floatingPanel.updateTranscription("正在润色: \(result)")
+
+                    // Reload AI provider config
+                    aiProvider?.reloadConfig()
+
+                    if let aiProvider = aiProvider, aiProvider.isAvailable {
+                        let systemPrompt = UserDefaults.standard.string(forKey: "aiSystemPrompt") ?? ""
+                        do {
+                            let polishedText = try await aiProvider.polish(text: result, systemPrompt: systemPrompt)
+                            print("[App] ✅ AI polished: \(polishedText)")
+                            result = polishedText
+                        } catch {
+                            print("[App] ❌ AI polish failed: \(error)")
+                            // Continue with original text if AI fails
+                        }
+                    } else {
+                        print("[App] ⚠️ AI provider not configured, using original text")
+                    }
+                }
+
+                floatingPanel.showResult(result)
+                // Insert text at cursor position
+                await insertText(result)
+
             } catch {
                 print("[App] ❌ Failed to stop speech recognition: \(error)")
                 floatingPanel.showError(error.localizedDescription)

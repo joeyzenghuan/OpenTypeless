@@ -28,7 +28,7 @@ struct SettingsView: View {
                     Label("关于", systemImage: "info.circle")
                 }
         }
-        .frame(width: 500, height: 400)
+        .frame(width: 550, height: 500)
     }
 }
 
@@ -217,52 +217,140 @@ struct ProviderInfoBox: View {
 // MARK: - AI Provider Settings
 
 struct AIProviderSettingsView: View {
-    @AppStorage("aiProvider") private var aiProvider = "openai"
+    @AppStorage("aiPolishEnabled") private var aiPolishEnabled = false
+    @AppStorage("aiProvider") private var aiProvider = "azure-openai"
+
+    // Azure OpenAI settings
+    @AppStorage("azureOpenAIEndpoint") private var azureOpenAIEndpoint = ""
+    @AppStorage("azureOpenAIDeployment") private var azureOpenAIDeployment = ""
+    @AppStorage("azureOpenAIKey") private var azureOpenAIKey = ""
+    @AppStorage("azureOpenAIVersion") private var azureOpenAIVersion = "2024-02-15-preview"
+
+    // System Prompt
+    @AppStorage("aiSystemPrompt") private var aiSystemPrompt = """
+你是一个文本润色助手。请对用户的语音转文字内容进行优化：
+1. 修正明显的语音识别错误
+2. 添加适当的标点符号
+3. 保持原意不变，使文字更通顺
+4. 不要添加额外的内容或解释
+5. 直接输出润色后的文字，不要有任何前缀或说明
+"""
+
+    // Other providers
     @AppStorage("openaiAPIKey") private var openaiAPIKey = ""
     @AppStorage("claudeAPIKey") private var claudeAPIKey = ""
     @AppStorage("ollamaEndpoint") private var ollamaEndpoint = "http://localhost:11434"
 
     var body: some View {
         Form {
-            Section("AI 处理服务") {
-                Picker("提供商", selection: $aiProvider) {
-                    Text("OpenAI (GPT-4)").tag("openai")
-                    Text("Anthropic (Claude)").tag("claude")
-                    Text("Azure OpenAI").tag("azure-openai")
-                    Text("本地 LLM (Ollama)").tag("ollama")
-                }
-                .pickerStyle(.radioGroup)
-            }
+            // Enable/Disable AI Polish
+            Section {
+                Toggle("启用 AI 润色", isOn: $aiPolishEnabled)
 
-            if aiProvider == "openai" {
-                Section("OpenAI 设置") {
-                    SecureField("API Key", text: $openaiAPIKey)
-                    Link("获取 API Key", destination: URL(string: "https://platform.openai.com/api-keys")!)
+                if aiPolishEnabled {
+                    Text("语音识别后，AI 将自动优化文字")
                         .font(.caption)
+                        .foregroundColor(.secondary)
                 }
             }
 
-            if aiProvider == "claude" {
-                Section("Anthropic 设置") {
-                    SecureField("API Key", text: $claudeAPIKey)
-                    Link("获取 API Key", destination: URL(string: "https://console.anthropic.com/")!)
-                        .font(.caption)
-                }
-            }
-
-            if aiProvider == "ollama" {
-                Section("Ollama 设置") {
-                    TextField("Endpoint", text: $ollamaEndpoint)
-                    HStack {
-                        Text("模型")
-                        Spacer()
-                        Picker("", selection: .constant("llama3")) {
-                            Text("Llama 3").tag("llama3")
-                            Text("Mistral").tag("mistral")
-                            Text("Qwen").tag("qwen")
-                        }
-                        .frame(width: 120)
+            if aiPolishEnabled {
+                // Provider Selection
+                Section("AI 服务提供商") {
+                    Picker("提供商", selection: $aiProvider) {
+                        Text("Azure OpenAI").tag("azure-openai")
+                        Text("OpenAI (GPT-4)").tag("openai")
+                        Text("Anthropic (Claude)").tag("claude")
+                        Text("本地 LLM (Ollama)").tag("ollama")
                     }
+                    .pickerStyle(.radioGroup)
+                }
+
+                // Azure OpenAI Settings
+                if aiProvider == "azure-openai" {
+                    Section("Azure OpenAI 设置") {
+                        TextField("Endpoint URL", text: $azureOpenAIEndpoint)
+                            .textFieldStyle(.roundedBorder)
+
+                        Text("例如: https://your-resource.openai.azure.com")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+
+                        TextField("Deployment Name", text: $azureOpenAIDeployment)
+                            .textFieldStyle(.roundedBorder)
+
+                        Text("例如: gpt-4o, gpt-35-turbo")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+
+                        SecureField("API Key", text: $azureOpenAIKey)
+                            .textFieldStyle(.roundedBorder)
+
+                        TextField("API Version", text: $azureOpenAIVersion)
+                            .textFieldStyle(.roundedBorder)
+
+                        Link("Azure OpenAI 文档",
+                             destination: URL(string: "https://learn.microsoft.com/azure/ai-services/openai/")!)
+                            .font(.caption)
+                    }
+                }
+
+                // OpenAI Settings
+                if aiProvider == "openai" {
+                    Section("OpenAI 设置") {
+                        SecureField("API Key", text: $openaiAPIKey)
+                            .textFieldStyle(.roundedBorder)
+                        Link("获取 API Key", destination: URL(string: "https://platform.openai.com/api-keys")!)
+                            .font(.caption)
+                    }
+                }
+
+                // Claude Settings
+                if aiProvider == "claude" {
+                    Section("Anthropic 设置") {
+                        SecureField("API Key", text: $claudeAPIKey)
+                            .textFieldStyle(.roundedBorder)
+                        Link("获取 API Key", destination: URL(string: "https://console.anthropic.com/")!)
+                            .font(.caption)
+                    }
+                }
+
+                // Ollama Settings
+                if aiProvider == "ollama" {
+                    Section("Ollama 设置") {
+                        TextField("Endpoint", text: $ollamaEndpoint)
+                            .textFieldStyle(.roundedBorder)
+                        HStack {
+                            Text("模型")
+                            Spacer()
+                            Picker("", selection: .constant("llama3")) {
+                                Text("Llama 3").tag("llama3")
+                                Text("Mistral").tag("mistral")
+                                Text("Qwen").tag("qwen")
+                            }
+                            .frame(width: 120)
+                        }
+                    }
+                }
+
+                // System Prompt
+                Section("润色提示词 (System Prompt)") {
+                    TextEditor(text: $aiSystemPrompt)
+                        .font(.system(size: 12, design: .monospaced))
+                        .frame(minHeight: 120)
+                        .border(Color.gray.opacity(0.3))
+
+                    Button("恢复默认提示词") {
+                        aiSystemPrompt = """
+你是一个文本润色助手。请对用户的语音转文字内容进行优化：
+1. 修正明显的语音识别错误
+2. 添加适当的标点符号
+3. 保持原意不变，使文字更通顺
+4. 不要添加额外的内容或解释
+5. 直接输出润色后的文字，不要有任何前缀或说明
+"""
+                    }
+                    .font(.caption)
                 }
             }
         }
