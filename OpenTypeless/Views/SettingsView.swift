@@ -74,7 +74,7 @@ struct GeneralSettingsView: View {
 struct SpeechProviderSettingsView: View {
     @AppStorage("speechProvider") private var speechProvider = "apple"
     @AppStorage("azureSpeechKey") private var azureSpeechKey = ""
-    @AppStorage("azureSpeechRegion") private var azureSpeechRegion = "eastasia"
+    @AppStorage("azureSpeechRegion") private var azureSpeechRegion = "swedencentral"
     @AppStorage("whisperAPIKey") private var whisperAPIKey = ""
 
     var body: some View {

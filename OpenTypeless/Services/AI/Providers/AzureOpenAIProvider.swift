@@ -99,7 +99,15 @@ class AzureOpenAIProvider: AIProvider {
             "temperature": 0.7
         ]
 
-        let jsonData = try JSONSerialization.data(withJSONObject: requestBody)
+        let jsonData = try JSONSerialization.data(withJSONObject: requestBody, options: .prettyPrinted)
+
+        // Print full request body
+        print("[AzureOpenAI] ========================================")
+        print("[AzureOpenAI] REQUEST BODY (Chat Completions):")
+        if let jsonStr = String(data: jsonData, encoding: .utf8) {
+            print(jsonStr)
+        }
+        print("[AzureOpenAI] ========================================")
 
         // Create request
         var request = URLRequest(url: url)
@@ -167,12 +175,15 @@ class AzureOpenAIProvider: AIProvider {
             "input": combinedInput
         ]
 
-        let jsonData = try JSONSerialization.data(withJSONObject: requestBody)
+        let jsonData = try JSONSerialization.data(withJSONObject: requestBody, options: .prettyPrinted)
 
-        // Debug: print request body
+        // Print full request body
+        print("[AzureOpenAI] ========================================")
+        print("[AzureOpenAI] REQUEST BODY (Responses API):")
         if let jsonStr = String(data: jsonData, encoding: .utf8) {
-            print("[AzureOpenAI] Request body: \(jsonStr)")
+            print(jsonStr)
         }
+        print("[AzureOpenAI] ========================================")
 
         // Create request
         var request = URLRequest(url: url)

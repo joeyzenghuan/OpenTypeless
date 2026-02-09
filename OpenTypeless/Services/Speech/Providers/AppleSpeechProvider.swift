@@ -58,6 +58,12 @@ class AppleSpeechProvider: SpeechRecognitionProvider {
     // MARK: - Protocol Methods
 
     func startRecognition(language: String) async throws {
+        print("[AppleSpeech] ========================================")
+        print("[AppleSpeech] Starting recognition")
+        print("[AppleSpeech] Provider: Apple Speech Framework (on-device)")
+        print("[AppleSpeech] Language: \(language)")
+        print("[AppleSpeech] ========================================")
+
         // Check authorization
         guard SFSpeechRecognizer.authorizationStatus() == .authorized else {
             throw SpeechRecognitionError.notAuthorized
@@ -72,6 +78,7 @@ class AppleSpeechProvider: SpeechRecognitionProvider {
             throw SpeechRecognitionError.notAvailable
         }
 
+        print("[AppleSpeech] On-device recognition: \(recognizer.supportsOnDeviceRecognition ? "supported" : "not supported")")
         speechRecognizer = recognizer
 
         // Setup audio engine
