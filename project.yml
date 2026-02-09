@@ -21,6 +21,9 @@ targets:
       - path: OpenTypeless
         excludes:
           - "**/.DS_Store"
+    configFiles:
+      Debug: Pods/Target Support Files/Pods-OpenTypeless/Pods-OpenTypeless.debug.xcconfig
+      Release: Pods/Target Support Files/Pods-OpenTypeless/Pods-OpenTypeless.release.xcconfig
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.opentypeless.app
@@ -45,6 +48,28 @@ targets:
         com.apple.security.app-sandbox: true
         com.apple.security.device.audio-input: true
         com.apple.security.network.client: true
+    preBuildScripts:
+      - name: "[CP] Check Pods Manifest.lock"
+        script: |
+          diff "${PODS_PODFILE_DIR_PATH}/Podfile.lock" "${PODS_ROOT}/Manifest.lock" > /dev/null
+          if [ $? != 0 ] ; then
+              echo "error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation."
+              exit 1
+          fi
+        inputFiles:
+          - ${PODS_PODFILE_DIR_PATH}/Podfile.lock
+          - ${PODS_ROOT}/Manifest.lock
+        outputFiles:
+          - $(DERIVED_FILE_DIR)/Pods-OpenTypeless-checkManifestLockResult.txt
+    postBuildScripts:
+      - name: "[CP] Embed Pods Frameworks"
+        script: |
+          "${PODS_ROOT}/Target Support Files/Pods-OpenTypeless/Pods-OpenTypeless-frameworks.sh"
+        inputFiles:
+          - ${PODS_ROOT}/Target Support Files/Pods-OpenTypeless/Pods-OpenTypeless-frameworks.sh
+          - ${BUILT_PRODUCTS_DIR}/MicrosoftCognitiveServicesSpeech.framework
+        outputFiles:
+          - ${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/MicrosoftCognitiveServicesSpeech.framework
 
 schemes:
   OpenTypeless:

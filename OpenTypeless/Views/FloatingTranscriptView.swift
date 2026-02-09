@@ -126,11 +126,19 @@ struct FloatingTranscriptView: View {
     var body: some View {
         VStack(spacing: 12) {
             // Recording indicator
-            HStack(spacing: 8) {
+            HStack(spacing: 10) {
+                // Westie dog icon (left side)
+                Image("MenuBarIcon")
+                    .renderingMode(.template)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 28, height: 28)
+                    .foregroundColor(controller.isRecording ? .red : .white)
+
                 if controller.isRecording {
                     Circle()
                         .fill(Color.red)
-                        .frame(width: 12, height: 12)
+                        .frame(width: 10, height: 10)
                         .overlay(
                             Circle()
                                 .stroke(Color.red.opacity(0.5), lineWidth: 2)
@@ -151,9 +159,6 @@ struct FloatingTranscriptView: View {
                 }
 
                 Spacer()
-
-                Image(systemName: "mic.fill")
-                    .foregroundColor(controller.isRecording ? .red : .gray)
             }
 
             // Transcription text - full width with word wrap

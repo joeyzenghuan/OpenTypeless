@@ -51,7 +51,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
 
         if let button = statusItem.button {
-            button.image = NSImage(systemSymbolName: "mic.fill", accessibilityDescription: "OpenTypeless")
+            // Use custom Westie dog icon
+            if let image = NSImage(named: "MenuBarIcon") {
+                image.isTemplate = true
+                image.size = NSSize(width: 18, height: 18)
+                button.image = image
+            } else {
+                // Fallback to SF Symbol if custom icon not found
+                button.image = NSImage(systemSymbolName: "mic.fill", accessibilityDescription: "OpenTypeless")
+            }
             button.action = #selector(togglePopover)
             print("[App] ✅ Menu bar icon created")
         }
@@ -187,9 +195,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func startVoiceInput() {
         print("[App] Starting voice input...")
 
-        // Update menu bar icon
+        // Update menu bar icon (tint red when recording)
         DispatchQueue.main.async {
-            self.statusItem.button?.image = NSImage(systemSymbolName: "mic.fill", accessibilityDescription: "Recording")
+            if let image = NSImage(named: "MenuBarIcon") {
+                image.isTemplate = true
+                image.size = NSSize(width: 18, height: 18)
+                self.statusItem.button?.image = image
+            }
             self.statusItem.button?.contentTintColor = .red
         }
 
@@ -215,7 +227,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Reset menu bar icon
         DispatchQueue.main.async {
-            self.statusItem.button?.image = NSImage(systemSymbolName: "mic.fill", accessibilityDescription: "OpenTypeless")
+            if let image = NSImage(named: "MenuBarIcon") {
+                image.isTemplate = true
+                image.size = NSSize(width: 18, height: 18)
+                self.statusItem.button?.image = image
+            }
             self.statusItem.button?.contentTintColor = nil
         }
 
@@ -249,18 +265,24 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 你是一个语音转文字的后处理工具。你的唯一任务是修正和润色语音识别的原始输出。
 
 规则：
-1. 只修正错别字和语音识别错误
-2. 只添加必要的标点符号
+1. 修正错别字和语音识别错误
+2. 添加必要的标点符号，换行，分条列点。
 3. 不要回复、不要对话、不要解释
-4. 不要添加任何额外内容
+4. 删除无效和重复的话，不要添加任何额外内容
 5. 直接输出修正后的原文，无任何前缀
+6. 与输入保持相同的语言。
 
 示例：
-输入：你好你吃饭了没
-输出：你好，你吃饭了没？
+输入：你好，你好，那什么今天你吃饭了没
+输出：你好，今天你吃饭了没？
 
-输入：今天天气挺好的我们去公园玩吧
-输出：今天天气挺好的，我们去公园玩吧。
+输入：你今天记得干两件事，一件是去超市买菜，另一个是去练习打球
+输出：你今天记得干两件事
+1. 去超市买菜
+2. 练习打球
+
+输入：GPT纹身图模型
+输出：GPT文生图模型
 """
                             print("[App] Using default system prompt (saved prompt was empty)")
                         }

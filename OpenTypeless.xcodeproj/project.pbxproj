@@ -12,6 +12,7 @@
 		0BB1CB5A828EEF03EF0719A8 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF76CB2479930C1E7CEE07A7 /* AppSettings.swift */; };
 		0F84A751957578580CBE8615 /* OpenTypelessApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00E4DE33B344D333E93E28C0 /* OpenTypelessApp.swift */; };
 		135C72512E4B9E44540F3B7A /* TranscriptionRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = 729F8BDAEF6016D7125444FA /* TranscriptionRecord.swift */; };
+		21ED68DB1B6E1CAD5831F1A2 /* Pods_OpenTypeless.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 75A1398609E1B808BF1D4139 /* Pods_OpenTypeless.framework */; };
 		69CE4AD000EE3B63287814FD /* SpeechRecognitionProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D3901535AEEF2DEC1916AEB /* SpeechRecognitionProvider.swift */; };
 		6F04D6402FCB6C34A10E94FD /* AzureOpenAIProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B84C205582E04AAC212A298 /* AzureOpenAIProvider.swift */; };
 		8AEA0FA90ED8E5E9C182BE7C /* HotkeyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C91B68855168E73530DA5130 /* HotkeyManager.swift */; };
@@ -20,26 +21,45 @@
 		D3C53EBA2E3591822AB346F1 /* FloatingTranscriptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D34A33AE50B82738A8CD7EE /* FloatingTranscriptView.swift */; };
 		E00D322E9B20E92737D0EE9B /* AIProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 364A217E94D33F21BEBCC653 /* AIProvider.swift */; };
 		F35407B0BC82EC963B360805 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 178A68B2A3FB147A3BC530F9 /* SettingsView.swift */; };
+		FC71AF52DF9B672932644CB6 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E810483641135366C3989138 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		00E4DE33B344D333E93E28C0 /* OpenTypelessApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenTypelessApp.swift; sourceTree = "<group>"; };
 		0C152EF9B6F66F7308D0ECDA /* OpenTypeless.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = OpenTypeless.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		12E2089F79A838A7A048E8C4 /* Pods-OpenTypeless.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-OpenTypeless.debug.xcconfig"; path = "Target Support Files/Pods-OpenTypeless/Pods-OpenTypeless.debug.xcconfig"; sourceTree = "<group>"; };
 		178A68B2A3FB147A3BC530F9 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		28A3DD57A9A952DD46C73E99 /* AppleSpeechProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSpeechProvider.swift; sourceTree = "<group>"; };
 		2D3901535AEEF2DEC1916AEB /* SpeechRecognitionProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechRecognitionProvider.swift; sourceTree = "<group>"; };
 		364A217E94D33F21BEBCC653 /* AIProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIProvider.swift; sourceTree = "<group>"; };
 		389663F9667847A5F1D6B800 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		5055B2BBB164DD3EFE6DF2C4 /* Pods-OpenTypeless.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-OpenTypeless.release.xcconfig"; path = "Target Support Files/Pods-OpenTypeless/Pods-OpenTypeless.release.xcconfig"; sourceTree = "<group>"; };
 		5D34A33AE50B82738A8CD7EE /* FloatingTranscriptView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FloatingTranscriptView.swift; sourceTree = "<group>"; };
 		624287DEA4E81D4346FB553C /* AzureSpeechProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AzureSpeechProvider.swift; sourceTree = "<group>"; };
 		729F8BDAEF6016D7125444FA /* TranscriptionRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionRecord.swift; sourceTree = "<group>"; };
+		75A1398609E1B808BF1D4139 /* Pods_OpenTypeless.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_OpenTypeless.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		7A8F640A93C0A181DCF75BA5 /* SpeechRecognitionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechRecognitionManager.swift; sourceTree = "<group>"; };
 		8B84C205582E04AAC212A298 /* AzureOpenAIProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AzureOpenAIProvider.swift; sourceTree = "<group>"; };
 		9C2CFE7329D163BD3344B469 /* OpenTypeless.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = OpenTypeless.entitlements; sourceTree = "<group>"; };
+		AB228A1483B43396C4029CE6 /* OpenTypeless-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "OpenTypeless-Bridging-Header.h"; sourceTree = "<group>"; };
 		AF76CB2479930C1E7CEE07A7 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
 		C91B68855168E73530DA5130 /* HotkeyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyManager.swift; sourceTree = "<group>"; };
 		DA49D25436D5439A3775F47D /* MenuBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarView.swift; sourceTree = "<group>"; };
+		DE12F159A81376B3622768D6 /* Pods-OpenTypeless.debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "Pods-OpenTypeless.debug.xcconfig"; sourceTree = "<group>"; };
+		E810483641135366C3989138 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		FAE28A5F20739EE69F990F30 /* Pods-OpenTypeless.release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "Pods-OpenTypeless.release.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		412744A6CDD6F532029F2E3D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				21ED68DB1B6E1CAD5831F1A2 /* Pods_OpenTypeless.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		450A7C7FA017980C98879D93 /* AI */ = {
@@ -55,7 +75,10 @@
 			isa = PBXGroup;
 			children = (
 				5CA13D3C010E08A296D90B60 /* OpenTypeless */,
+				7737A3A4BB4835E1DCDF0DD4 /* Pods-OpenTypeless */,
 				E9C04359331FACD7E4739CE9 /* Products */,
+				F702FC376F1ABCB037511ACB /* Pods */,
+				E0D460287CA94EEF1804BE81 /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -102,7 +125,9 @@
 		6C47D359FC9115E9A8218F96 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				E810483641135366C3989138 /* Assets.xcassets */,
 				389663F9667847A5F1D6B800 /* Info.plist */,
+				AB228A1483B43396C4029CE6 /* OpenTypeless-Bridging-Header.h */,
 				9C2CFE7329D163BD3344B469 /* OpenTypeless.entitlements */,
 			);
 			path = Resources;
@@ -115,6 +140,16 @@
 				624287DEA4E81D4346FB553C /* AzureSpeechProvider.swift */,
 			);
 			path = Providers;
+			sourceTree = "<group>";
+		};
+		7737A3A4BB4835E1DCDF0DD4 /* Pods-OpenTypeless */ = {
+			isa = PBXGroup;
+			children = (
+				DE12F159A81376B3622768D6 /* Pods-OpenTypeless.debug.xcconfig */,
+				FAE28A5F20739EE69F990F30 /* Pods-OpenTypeless.release.xcconfig */,
+			);
+			name = "Pods-OpenTypeless";
+			path = "Pods/Target Support Files/Pods-OpenTypeless";
 			sourceTree = "<group>";
 		};
 		7A3213C9EB1F5F930A52BB82 /* Speech */ = {
@@ -151,6 +186,14 @@
 			path = App;
 			sourceTree = "<group>";
 		};
+		E0D460287CA94EEF1804BE81 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				75A1398609E1B808BF1D4139 /* Pods_OpenTypeless.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		E9C04359331FACD7E4739CE9 /* Products */ = {
 			isa = PBXGroup;
 			children = (
@@ -176,6 +219,16 @@
 			path = Accessibility;
 			sourceTree = "<group>";
 		};
+		F702FC376F1ABCB037511ACB /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				12E2089F79A838A7A048E8C4 /* Pods-OpenTypeless.debug.xcconfig */,
+				5055B2BBB164DD3EFE6DF2C4 /* Pods-OpenTypeless.release.xcconfig */,
+			);
+			name = Pods;
+			path = Pods;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -183,15 +236,17 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = C4FF69F70F2BBBAB978A538B /* Build configuration list for PBXNativeTarget "OpenTypeless" */;
 			buildPhases = (
+				9AA3F63FFE23979DA2B172A9 /* [CP] Check Pods Manifest.lock */,
 				41071E7DEEDB4E448D9A68F7 /* Sources */,
+				53BE6899CF1BCE4D2D4DD15E /* Resources */,
+				3BC9B452ADC065A5636B0AAA /* [CP] Embed Pods Frameworks */,
+				412744A6CDD6F532029F2E3D /* Frameworks */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 			);
 			name = OpenTypeless;
-			packageProductDependencies = (
-			);
 			productName = OpenTypeless;
 			productReference = 0C152EF9B6F66F7308D0ECDA /* OpenTypeless.app */;
 			productType = "com.apple.product-type.application";
@@ -221,6 +276,7 @@
 			mainGroup = 4F219BC675784540A105291E;
 			minimizedProjectReferenceProxies = 1;
 			preferredProjectObjectVersion = 77;
+			productRefGroup = E9C04359331FACD7E4739CE9 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -228,6 +284,57 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		53BE6899CF1BCE4D2D4DD15E /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FC71AF52DF9B672932644CB6 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		3BC9B452ADC065A5636B0AAA /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-OpenTypeless/Pods-OpenTypeless-frameworks-${CONFIGURATION}-input-files.xcfilelist",
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-OpenTypeless/Pods-OpenTypeless-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-OpenTypeless/Pods-OpenTypeless-frameworks.sh\"\n";
+		};
+		9AA3F63FFE23979DA2B172A9 /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-OpenTypeless-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		41071E7DEEDB4E448D9A68F7 /* Sources */ = {
@@ -255,15 +362,20 @@
 /* Begin XCBuildConfiguration section */
 		5F154BCF28B4387BBE69AA42 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 12E2089F79A838A7A048E8C4 /* Pods-OpenTypeless.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = OpenTypeless/Resources/OpenTypeless.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
 				INFOPLIST_FILE = OpenTypeless/Resources/Info.plist;
 				INFOPLIST_KEY_LSUIElement = YES;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.opentypeless.app;
 				SDKROOT = macosx;
+				SWIFT_OBJC_BRIDGING_HEADER = "OpenTypeless/Resources/OpenTypeless-Bridging-Header.h";
 			};
 			name = Debug;
 		};
@@ -335,15 +447,20 @@
 		};
 		9C1E9EC04F4BF521649829E7 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 5055B2BBB164DD3EFE6DF2C4 /* Pods-OpenTypeless.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = OpenTypeless/Resources/OpenTypeless.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
 				INFOPLIST_FILE = OpenTypeless/Resources/Info.plist;
 				INFOPLIST_KEY_LSUIElement = YES;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.opentypeless.app;
 				SDKROOT = macosx;
+				SWIFT_OBJC_BRIDGING_HEADER = "OpenTypeless/Resources/OpenTypeless-Bridging-Header.h";
 			};
 			name = Release;
 		};
