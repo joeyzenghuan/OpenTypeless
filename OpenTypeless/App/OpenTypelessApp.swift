@@ -1,6 +1,7 @@
 import SwiftUI
 import AVFoundation
 import ApplicationServices
+import Speech
 
 @main
 struct OpenTypelessApp: App {
@@ -17,23 +18,49 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
     private var popover: NSPopover!
 
+    // Managers
+    private let hotkeyManager = HotkeyManager.shared
+    private let floatingPanel = FloatingPanelController.shared
+    private var speechProvider: AppleSpeechProvider?
+
     func applicationDidFinishLaunching(_ notification: Notification) {
+        print("========================================")
+        print("[App] OpenTypeless starting...")
+        print("========================================")
+
         setupMenuBar()
         requestPermissions()
+        setupHotkeys()
+        setupSpeechRecognition()
+
+        print("[App] ✅ App initialization complete")
+        print("========================================")
     }
 
+    func applicationWillTerminate(_ notification: Notification) {
+        print("[App] Shutting down...")
+        hotkeyManager.stopMonitoring()
+    }
+
+    // MARK: - Menu Bar Setup
+
     private func setupMenuBar() {
+        print("[App] Setting up menu bar...")
+
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
 
         if let button = statusItem.button {
             button.image = NSImage(systemSymbolName: "mic.fill", accessibilityDescription: "OpenTypeless")
             button.action = #selector(togglePopover)
+            print("[App] ✅ Menu bar icon created")
         }
 
         popover = NSPopover()
         popover.contentSize = NSSize(width: 320, height: 400)
         popover.behavior = .transient
         popover.contentViewController = NSHostingController(rootView: MenuBarView())
+
+        print("[App] ✅ Menu bar setup complete")
     }
 
     @objc private func togglePopover() {
@@ -47,29 +74,176 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    // MARK: - Permissions
+
     private func requestPermissions() {
+        print("[App] Checking permissions...")
+
         // Request microphone permission
+        print("[App] Requesting microphone permission...")
         AVCaptureDevice.requestAccess(for: .audio) { granted in
-            print("Microphone permission: \(granted)")
+            print("[App] Microphone permission: \(granted ? "✅ granted" : "❌ denied")")
         }
 
-        // Check accessibility permission with prompt
-        // This will show a system dialog directing user to Settings
+        // Request speech recognition permission
+        print("[App] Requesting speech recognition permission...")
+        SFSpeechRecognizer.requestAuthorization { status in
+            let statusStr: String
+            switch status {
+            case .authorized: statusStr = "✅ authorized"
+            case .denied: statusStr = "❌ denied"
+            case .restricted: statusStr = "⚠️ restricted"
+            case .notDetermined: statusStr = "⏳ not determined"
+            @unknown default: statusStr = "❓ unknown"
+            }
+            print("[App] Speech recognition permission: \(statusStr)")
+        }
+
+        // Check accessibility permission
+        print("[App] Checking accessibility permission...")
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true]
             let accessibilityEnabled = AXIsProcessTrustedWithOptions(options as CFDictionary)
-            print("Accessibility permission: \(accessibilityEnabled)")
+            print("[App] Accessibility permission: \(accessibilityEnabled ? "✅ granted" : "❌ denied")")
 
             if !accessibilityEnabled {
-                print("⚠️ Accessibility permission required for text insertion.")
-                print("   Please go to: System Settings → Privacy & Security → Accessibility")
-                print("   Then add OpenTypeless (or Xcode if running from Xcode)")
+                print("[App] ⚠️ Accessibility permission required for text insertion.")
+                print("[App]    Please go to: System Settings → Privacy & Security → Accessibility")
+                print("[App]    Then add this app or Xcode (if running from Xcode)")
             }
         }
     }
 
-    // Check accessibility permission status
-    static var isAccessibilityEnabled: Bool {
-        return AXIsProcessTrusted()
+    // MARK: - Hotkey Setup
+
+    private func setupHotkeys() {
+        print("[App] Setting up hotkeys...")
+
+        hotkeyManager.onFnKeyDown = { [weak self] in
+            print("[App] 🎤 fn key pressed - starting voice input")
+            self?.startVoiceInput()
+        }
+
+        hotkeyManager.onFnKeyUp = { [weak self] in
+            print("[App] 🛑 fn key released - stopping voice input")
+            self?.stopVoiceInput()
+        }
+
+        hotkeyManager.startMonitoring()
+        print("[App] ✅ Hotkey setup complete - Press and hold fn key to start voice input")
+    }
+
+    // MARK: - Speech Recognition Setup
+
+    private func setupSpeechRecognition() {
+        print("[App] Setting up speech recognition...")
+        print("[App] Using Apple Speech Framework (AI processing disabled by default)")
+
+        speechProvider = AppleSpeechProvider()
+
+        speechProvider?.onPartialResult { [weak self] result in
+            print("[App] Partial result: \(result.text)")
+            self?.floatingPanel.updateTranscription(result.text)
+        }
+
+        speechProvider?.onError { error in
+            print("[App] ❌ Speech recognition error: \(error.localizedDescription)")
+        }
+
+        print("[App] ✅ Speech recognition setup complete")
+    }
+
+    // MARK: - Voice Input
+
+    private func startVoiceInput() {
+        print("[App] Starting voice input...")
+
+        // Update menu bar icon
+        DispatchQueue.main.async {
+            self.statusItem.button?.image = NSImage(systemSymbolName: "mic.fill", accessibilityDescription: "Recording")
+            self.statusItem.button?.contentTintColor = .red
+        }
+
+        // Show floating panel
+        floatingPanel.showPanel()
+
+        // Start speech recognition
+        Task {
+            do {
+                let language = UserDefaults.standard.string(forKey: "speechLanguage") ?? "zh-CN"
+                print("[App] Starting recognition with language: \(language)")
+                try await speechProvider?.startRecognition(language: language)
+                print("[App] ✅ Speech recognition started")
+            } catch {
+                print("[App] ❌ Failed to start speech recognition: \(error)")
+                floatingPanel.showError(error.localizedDescription)
+            }
+        }
+    }
+
+    private func stopVoiceInput() {
+        print("[App] Stopping voice input...")
+
+        // Reset menu bar icon
+        DispatchQueue.main.async {
+            self.statusItem.button?.image = NSImage(systemSymbolName: "mic.fill", accessibilityDescription: "OpenTypeless")
+            self.statusItem.button?.contentTintColor = nil
+        }
+
+        // Stop speech recognition and get result
+        Task {
+            do {
+                let result = try await speechProvider?.stopRecognition() ?? ""
+                print("[App] ✅ Final transcription: \(result)")
+
+                if !result.isEmpty {
+                    floatingPanel.showResult(result)
+                    // Insert text at cursor position
+                    await insertText(result)
+                } else {
+                    print("[App] ⚠️ No transcription result")
+                    floatingPanel.hidePanel()
+                }
+            } catch {
+                print("[App] ❌ Failed to stop speech recognition: \(error)")
+                floatingPanel.showError(error.localizedDescription)
+            }
+        }
+    }
+
+    // MARK: - Text Insertion
+
+    @MainActor
+    private func insertText(_ text: String) async {
+        print("[App] Inserting text: \(text)")
+
+        // Check accessibility permission
+        guard AXIsProcessTrusted() else {
+            print("[App] ❌ Cannot insert text - accessibility permission not granted")
+            return
+        }
+
+        // Use keyboard simulation to insert text
+        print("[App] Simulating keyboard input...")
+
+        // Copy text to clipboard
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(text, forType: .string)
+
+        // Simulate Cmd+V to paste
+        let source = CGEventSource(stateID: .hidSystemState)
+
+        // Key down: Cmd+V
+        let keyDown = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: true) // V key
+        keyDown?.flags = .maskCommand
+        keyDown?.post(tap: .cghidEventTap)
+
+        // Key up: Cmd+V
+        let keyUp = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: false)
+        keyUp?.flags = .maskCommand
+        keyUp?.post(tap: .cghidEventTap)
+
+        print("[App] ✅ Text inserted via clipboard paste")
     }
 }
