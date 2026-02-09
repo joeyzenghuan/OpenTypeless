@@ -1,0 +1,10 @@
+2026-02-09 17:17:15,207 - __main__ - INFO - 🔍 Verifying Azure configuration...
+2026-02-09 17:17:15,207 - __main__ - INFO - Azure configuration loaded successfully
+2026-02-09 17:17:15,207 - __main__ - INFO - ✅ Azure configuration verification successful
+2026-02-09 17:17:15,207 - __main__ - INFO -    - Service URL: https://jzdm-foundry-swn.openai.azure.com
+2026-02-09 17:17:15,207 - __main__ - INFO -    - Deployment name: gpt-image-1.5-globalstandard
+2026-02-09 17:17:15,208 - __main__ - INFO -    - Model: gpt-image-1.5
+2026-02-09 17:17:15,208 - __main__ - INFO -    - API key: ********************************************************************************OQBo
+2026-02-09 17:17:15,208 - __main__ - INFO - 🚀 Starting Azure Image Editor MCP STDIO Server
+2026-02-09 17:17:15,208 - __main__ - INFO - 📊 Default image size: 1024x1024
+2026-02-09 17:17:15,381 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
