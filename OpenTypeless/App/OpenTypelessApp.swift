@@ -219,7 +219,29 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                     aiProvider?.reloadConfig()
 
                     if let aiProvider = aiProvider, aiProvider.isAvailable {
-                        let systemPrompt = UserDefaults.standard.string(forKey: "aiSystemPrompt") ?? ""
+                        // Get system prompt, use default if empty
+                        var systemPrompt = UserDefaults.standard.string(forKey: "aiSystemPrompt") ?? ""
+                        if systemPrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            systemPrompt = """
+你是一个语音转文字的后处理工具。你的唯一任务是修正和润色语音识别的原始输出。
+
+规则：
+1. 只修正错别字和语音识别错误
+2. 只添加必要的标点符号
+3. 不要回复、不要对话、不要解释
+4. 不要添加任何额外内容
+5. 直接输出修正后的原文，无任何前缀
+
+示例：
+输入：你好你吃饭了没
+输出：你好，你吃饭了没？
+
+输入：今天天气挺好的我们去公园玩吧
+输出：今天天气挺好的，我们去公园玩吧。
+"""
+                            print("[App] Using default system prompt (saved prompt was empty)")
+                        }
+
                         do {
                             let polishedText = try await aiProvider.polish(text: result, systemPrompt: systemPrompt)
                             print("[App] ✅ AI polished: \(polishedText)")
