@@ -48,17 +48,32 @@ struct MenuBarView: View {
 
                     Divider()
 
-                    // Settings button - use SettingsLink for macOS 14+
-                    SettingsLink {
-                        HStack {
-                            Image(systemName: "gear")
-                            Text("设置")
+                    // Settings button
+                    if #available(macOS 14.0, *) {
+                        SettingsLink {
+                            HStack {
+                                Image(systemName: "gear")
+                                Text("设置")
+                            }
+                            .foregroundColor(.secondary)
+                            .padding(.vertical, 8)
+                            .padding(.horizontal, 12)
                         }
-                        .foregroundColor(.secondary)
-                        .padding(.vertical, 8)
-                        .padding(.horizontal, 12)
+                        .buttonStyle(.plain)
+                    } else {
+                        Button(action: {
+                            NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+                        }) {
+                            HStack {
+                                Image(systemName: "gear")
+                                Text("设置")
+                            }
+                            .foregroundColor(.secondary)
+                            .padding(.vertical, 8)
+                            .padding(.horizontal, 12)
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                 }
                 .frame(width: 100)
                 .padding(.vertical, 8)
