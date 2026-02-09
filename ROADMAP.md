@@ -82,8 +82,8 @@ protocol AIProvider {
 
 | 阶段 | 状态 | 完成度 |
 |------|------|--------|
-| 阶段 1：基础架构 | 🔲 待开始 | 0% |
-| 阶段 2：语音转文字 | 🔲 待开始 | 0% |
+| 阶段 1：基础架构 | 🔨 进行中 | 80% |
+| 阶段 2：语音转文字 | 🔨 进行中 | 40% |
 | 阶段 3：AI 智能处理 | 🔲 待开始 | 0% |
 | 阶段 4：高级功能 | 🔲 待开始 | 0% |
 
@@ -97,11 +97,11 @@ protocol AIProvider {
 
 | 任务 | 状态 | 备注 |
 |------|------|------|
-| 1.1 创建 Xcode 项目 | 🔲 | Swift + SwiftUI |
-| 1.2 菜单栏应用 (Menu Bar App) | 🔲 | NSStatusItem |
+| 1.1 创建 Xcode 项目 | ✅ | Swift + SwiftUI, XcodeGen |
+| 1.2 菜单栏应用 (Menu Bar App) | ✅ | NSStatusItem + Popover |
 | 1.3 全局快捷键监听 | 🔲 | fn 键特殊处理 |
-| 1.4 设置界面 UI | 🔲 | 快捷键、语言、账户 |
-| 1.5 历史记录界面 UI | 🔲 | 列表展示 |
+| 1.4 设置界面 UI | ✅ | 通用、语音、AI、快捷键、关于 |
+| 1.5 历史记录界面 UI | ✅ | 列表展示 + 词典 |
 
 ### 技术细节
 - **框架**：Swift 5.9+ / SwiftUI
@@ -116,12 +116,12 @@ protocol AIProvider {
 
 | 任务 | 状态 | 备注 |
 |------|------|------|
-| 2.1 麦克风权限请求 | 🔲 | Info.plist 配置 |
-| 2.2 音频录制模块 | 🔲 | AVAudioEngine |
-| 2.3 SpeechRecognitionProvider 协议 | 🔲 | 服务抽象层 |
-| 2.4 Apple Speech 实现 | 🔲 | 默认提供商 |
-| 2.5 Azure Speech Service 实现 | 🔲 | 可选提供商 |
-| 2.6 服务提供商设置 UI | 🔲 | 用户可切换 |
+| 2.1 麦克风权限请求 | ✅ | Info.plist 配置 |
+| 2.2 音频录制模块 | 🔨 | AVAudioEngine (集成在 Provider 中) |
+| 2.3 SpeechRecognitionProvider 协议 | ✅ | 服务抽象层 |
+| 2.4 Apple Speech 实现 | ✅ | 默认提供商 |
+| 2.5 Azure Speech Service 实现 | 🔨 | 骨架已创建，待集成 SDK |
+| 2.6 服务提供商设置 UI | ✅ | 用户可切换 |
 | 2.7 获取当前光标位置 | 🔲 | Accessibility API |
 | 2.8 文字插入功能 | 🔲 | 模拟键盘输入 |
 | 2.9 实时转录显示 | 🔲 | 浮动窗口 |
@@ -252,6 +252,19 @@ OpenTypeless/
 
 ## 更新日志
 
+### 2026-02-09 (v3)
+- ✅ 完成阶段 1 核心任务（80%）
+  - 创建 Xcode 项目结构 (XcodeGen)
+  - 实现菜单栏应用 (NSStatusItem + Popover)
+  - 完成设置界面 (通用/语音/AI/快捷键/关于)
+  - 完成历史记录和词典界面
+- ✅ 完成阶段 2 部分任务（40%）
+  - 实现 SpeechRecognitionProvider 协议
+  - 完成 Apple Speech Provider
+  - 创建 Azure Speech Provider 骨架
+  - 完成服务提供商设置 UI
+- 新增 README.md 和 setup 脚本
+
 ### 2026-02-09 (v2)
 - 新增服务抽象层架构设计
 - 支持多语音识别提供商：Apple Speech / Azure Speech / Whisper
@@ -268,6 +281,10 @@ OpenTypeless/
 
 ## 下一步
 
-开始 **阶段 1：基础架构**
-- [ ] 创建 Xcode 项目
-- [ ] 实现菜单栏应用基础框架
+继续 **阶段 1：基础架构**
+- [ ] 实现全局快捷键监听 (fn 键)
+
+继续 **阶段 2：语音转文字**
+- [ ] 获取当前光标位置 (Accessibility API)
+- [ ] 文字插入功能
+- [ ] 实时转录浮动窗口
