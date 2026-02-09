@@ -8,6 +8,76 @@ OpenTypeless 是一款 AI 驱动的语音输入助手，让用户可以在任何
 
 ---
 
+## 架构设计：服务抽象层
+
+为了保证未来的可扩展性，项目采用 **Protocol-based 服务抽象层** 设计，允许用户在设置中自由切换不同的服务提供商。
+
+### 语音识别服务 (SpeechRecognitionProvider)
+
+```swift
+protocol SpeechRecognitionProvider {
+    var name: String { get }
+    var supportsRealtime: Bool { get }
+    var supportsOffline: Bool { get }
+
+    func startRecognition(language: String) async throws
+    func stopRecognition() async throws -> String
+    func onPartialResult(_ handler: @escaping (String) -> Void)
+}
+```
+
+**支持的提供商：**
+
+| 提供商 | 实时识别 | 离线支持 | 备注 |
+|--------|----------|----------|------|
+| Apple Speech Framework | ✅ | ✅ | 默认，免费，隐私友好 |
+| Azure Speech Service | ✅ | ❌ | 高精度，多语言，需 API Key |
+| OpenAI Whisper API | ❌ | ❌ | 高精度，需 API Key |
+| 本地 Whisper | ❌ | ✅ | 完全离线，需下载模型 |
+
+### AI 处理服务 (AIProvider)
+
+```swift
+protocol AIProvider {
+    var name: String { get }
+
+    func format(text: String, context: FormatContext) async throws -> String
+    func rewrite(text: String, instruction: String) async throws -> String
+    func translate(text: String, to language: String) async throws -> String
+}
+```
+
+**支持的提供商：**
+
+| 提供商 | 备注 |
+|--------|------|
+| OpenAI (GPT-4) | 默认推荐 |
+| Anthropic (Claude) | 高质量输出 |
+| Azure OpenAI | 企业级 |
+| 本地 LLM (Ollama) | 完全离线 |
+
+### 设置界面预览
+
+```
+┌─────────────────────────────────────┐
+│ 语音识别服务                          │
+│ ┌─────────────────────────────────┐ │
+│ │ ○ Apple Speech (推荐)           │ │
+│ │ ○ Azure Speech Service          │ │
+│ │ ○ OpenAI Whisper                │ │
+│ │ ○ 本地 Whisper                  │ │
+│ └─────────────────────────────────┘ │
+│                                     │
+│ Azure Speech Service 设置           │
+│ ┌─────────────────────────────────┐ │
+│ │ API Key: ••••••••••••           │ │
+│ │ Region:  eastasia               │ │
+│ └─────────────────────────────────┘ │
+└─────────────────────────────────────┘
+```
+
+---
+
 ## 进度总览
 
 | 阶段 | 状态 | 完成度 |
@@ -42,20 +112,31 @@ OpenTypeless 是一款 AI 驱动的语音输入助手，让用户可以在任何
 
 ## 阶段 2：语音转文字
 
-**目标**：实现基础的语音识别和文字输入功能
+**目标**：实现基础的语音识别和文字输入功能，采用可扩展的服务抽象层
 
 | 任务 | 状态 | 备注 |
 |------|------|------|
 | 2.1 麦克风权限请求 | 🔲 | Info.plist 配置 |
 | 2.2 音频录制模块 | 🔲 | AVAudioEngine |
-| 2.3 语音识别集成 | 🔲 | Apple Speech / Whisper |
-| 2.4 获取当前光标位置 | 🔲 | Accessibility API |
-| 2.5 文字插入功能 | 🔲 | 模拟键盘输入 |
-| 2.6 实时转录显示 | 🔲 | 浮动窗口 |
+| 2.3 SpeechRecognitionProvider 协议 | 🔲 | 服务抽象层 |
+| 2.4 Apple Speech 实现 | 🔲 | 默认提供商 |
+| 2.5 Azure Speech Service 实现 | 🔲 | 可选提供商 |
+| 2.6 服务提供商设置 UI | 🔲 | 用户可切换 |
+| 2.7 获取当前光标位置 | 🔲 | Accessibility API |
+| 2.8 文字插入功能 | 🔲 | 模拟键盘输入 |
+| 2.9 实时转录显示 | 🔲 | 浮动窗口 |
 
 ### 技术细节
-- **语音识别**：优先使用 Apple Speech Framework（离线），备选 Whisper API
+- **架构**：Protocol-based 服务抽象层，支持运行时切换提供商
+- **默认**：Apple Speech Framework（离线、免费、隐私友好）
+- **可选**：Azure Speech Service（高精度、实时流式、多语言）
 - **权限**：需要麦克风权限 + 辅助功能权限
+
+### Azure Speech Service 集成要点
+- 使用 Azure Speech SDK for iOS/macOS
+- 支持实时流式识别 (Real-time Recognition)
+- 需要用户配置 API Key 和 Region
+- 支持自定义词汇表
 
 ---
 
@@ -123,28 +204,62 @@ OpenTypeless 是一款 AI 驱动的语音输入助手，让用户可以在任何
 
 ```
 OpenTypeless/
-├── OpenTypeless.xcodeproj    # Xcode 项目
+├── OpenTypeless.xcodeproj        # Xcode 项目
 ├── OpenTypeless/
-│   ├── App/                  # 应用入口
-│   ├── Views/                # SwiftUI 视图
-│   ├── Services/             # 核心服务
-│   │   ├── AudioService      # 音频录制
-│   │   ├── SpeechService     # 语音识别
-│   │   ├── AIService         # LLM 集成
-│   │   └── AccessibilityService  # 辅助功能
-│   ├── Models/               # 数据模型
-│   ├── Utils/                # 工具类
-│   └── Resources/            # 资源文件
-├── ui_to_learn/              # 参考截图
-├── logs/                     # 日志
-└── ROADMAP.md                # 本文件
+│   ├── App/                      # 应用入口
+│   │   └── OpenTypelessApp.swift
+│   ├── Views/                    # SwiftUI 视图
+│   │   ├── MenuBarView.swift
+│   │   ├── SettingsView.swift
+│   │   ├── HistoryView.swift
+│   │   └── FloatingTranscriptView.swift
+│   ├── Services/                 # 核心服务
+│   │   ├── Audio/
+│   │   │   └── AudioRecorder.swift
+│   │   ├── Speech/               # 语音识别抽象层
+│   │   │   ├── SpeechRecognitionProvider.swift  # Protocol
+│   │   │   ├── SpeechRecognitionManager.swift   # 统一管理器
+│   │   │   ├── Providers/
+│   │   │   │   ├── AppleSpeechProvider.swift    # Apple Speech
+│   │   │   │   ├── AzureSpeechProvider.swift    # Azure Speech
+│   │   │   │   ├── WhisperAPIProvider.swift     # OpenAI Whisper
+│   │   │   │   └── LocalWhisperProvider.swift   # 本地 Whisper
+│   │   │   └── Config/
+│   │   │       └── SpeechProviderConfig.swift   # 提供商配置
+│   │   ├── AI/                   # AI 处理抽象层
+│   │   │   ├── AIProvider.swift              # Protocol
+│   │   │   ├── AIManager.swift               # 统一管理器
+│   │   │   └── Providers/
+│   │   │       ├── OpenAIProvider.swift
+│   │   │       ├── ClaudeProvider.swift
+│   │   │       └── OllamaProvider.swift
+│   │   └── Accessibility/
+│   │       └── AccessibilityService.swift
+│   ├── Models/                   # 数据模型
+│   │   ├── TranscriptionRecord.swift
+│   │   ├── UserDictionary.swift
+│   │   └── AppSettings.swift
+│   ├── Utils/                    # 工具类
+│   │   ├── HotkeyManager.swift
+│   │   └── KeyboardSimulator.swift
+│   └── Resources/                # 资源文件
+├── ui_to_learn/                  # 参考截图
+├── logs/                         # 日志
+└── ROADMAP.md                    # 本文件
 ```
 
 ---
 
 ## 更新日志
 
-### 2026-02-09
+### 2026-02-09 (v2)
+- 新增服务抽象层架构设计
+- 支持多语音识别提供商：Apple Speech / Azure Speech / Whisper
+- 支持多 AI 提供商：OpenAI / Claude / Ollama
+- 更新项目结构，体现 Protocol-based 设计
+- 新增设置界面预览
+
+### 2026-02-09 (v1)
 - 创建项目规划文档
 - 完成功能调研和分析
 - 确定技术栈和开发阶段
