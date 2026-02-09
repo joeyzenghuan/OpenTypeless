@@ -13,8 +13,10 @@
 		0F84A751957578580CBE8615 /* OpenTypelessApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00E4DE33B344D333E93E28C0 /* OpenTypelessApp.swift */; };
 		135C72512E4B9E44540F3B7A /* TranscriptionRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = 729F8BDAEF6016D7125444FA /* TranscriptionRecord.swift */; };
 		69CE4AD000EE3B63287814FD /* SpeechRecognitionProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D3901535AEEF2DEC1916AEB /* SpeechRecognitionProvider.swift */; };
+		8AEA0FA90ED8E5E9C182BE7C /* HotkeyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C91B68855168E73530DA5130 /* HotkeyManager.swift */; };
 		9299663A6DC9B17A21D81AFA /* AppleSpeechProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28A3DD57A9A952DD46C73E99 /* AppleSpeechProvider.swift */; };
 		B141FA995B0EE91F82F92043 /* SpeechRecognitionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A8F640A93C0A181DCF75BA5 /* SpeechRecognitionManager.swift */; };
+		D3C53EBA2E3591822AB346F1 /* FloatingTranscriptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D34A33AE50B82738A8CD7EE /* FloatingTranscriptView.swift */; };
 		F35407B0BC82EC963B360805 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 178A68B2A3FB147A3BC530F9 /* SettingsView.swift */; };
 /* End PBXBuildFile section */
 
@@ -25,11 +27,13 @@
 		28A3DD57A9A952DD46C73E99 /* AppleSpeechProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSpeechProvider.swift; sourceTree = "<group>"; };
 		2D3901535AEEF2DEC1916AEB /* SpeechRecognitionProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechRecognitionProvider.swift; sourceTree = "<group>"; };
 		389663F9667847A5F1D6B800 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		5D34A33AE50B82738A8CD7EE /* FloatingTranscriptView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FloatingTranscriptView.swift; sourceTree = "<group>"; };
 		624287DEA4E81D4346FB553C /* AzureSpeechProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AzureSpeechProvider.swift; sourceTree = "<group>"; };
 		729F8BDAEF6016D7125444FA /* TranscriptionRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionRecord.swift; sourceTree = "<group>"; };
 		7A8F640A93C0A181DCF75BA5 /* SpeechRecognitionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechRecognitionManager.swift; sourceTree = "<group>"; };
 		9C2CFE7329D163BD3344B469 /* OpenTypeless.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = OpenTypeless.entitlements; sourceTree = "<group>"; };
 		AF76CB2479930C1E7CEE07A7 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
+		C91B68855168E73530DA5130 /* HotkeyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyManager.swift; sourceTree = "<group>"; };
 		DA49D25436D5439A3775F47D /* MenuBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -84,6 +88,7 @@
 		62A0131A500D2576F3400CAB /* Utils */ = {
 			isa = PBXGroup;
 			children = (
+				C91B68855168E73530DA5130 /* HotkeyManager.swift */,
 			);
 			path = Utils;
 			sourceTree = "<group>";
@@ -151,6 +156,7 @@
 		EE4BDD9A6014B461369C5A55 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				5D34A33AE50B82738A8CD7EE /* FloatingTranscriptView.swift */,
 				DA49D25436D5439A3775F47D /* MenuBarView.swift */,
 				178A68B2A3FB147A3BC530F9 /* SettingsView.swift */,
 			);
@@ -225,6 +231,8 @@
 				0BB1CB5A828EEF03EF0719A8 /* AppSettings.swift in Sources */,
 				9299663A6DC9B17A21D81AFA /* AppleSpeechProvider.swift in Sources */,
 				0ABBC1319ACC690D51BE79C6 /* AzureSpeechProvider.swift in Sources */,
+				D3C53EBA2E3591822AB346F1 /* FloatingTranscriptView.swift in Sources */,
+				8AEA0FA90ED8E5E9C182BE7C /* HotkeyManager.swift in Sources */,
 				0924D8252DDECF465A749E90 /* MenuBarView.swift in Sources */,
 				0F84A751957578580CBE8615 /* OpenTypelessApp.swift in Sources */,
 				F35407B0BC82EC963B360805 /* SettingsView.swift in Sources */,

@@ -86,10 +86,10 @@ class FloatingPanelController: NSObject, ObservableObject {
             .environmentObject(self)
 
         let hostingView = NSHostingView(rootView: contentView)
-        hostingView.frame = NSRect(x: 0, y: 0, width: 300, height: 120)
+        hostingView.frame = NSRect(x: 0, y: 0, width: 500, height: 150)
 
         let panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 300, height: 120),
+            contentRect: NSRect(x: 0, y: 0, width: 500, height: 150),
             styleMask: [.nonactivatingPanel, .fullSizeContentView, .hudWindow],
             backing: .buffered,
             defer: false
@@ -106,12 +106,12 @@ class FloatingPanelController: NSObject, ObservableObject {
         panel.isOpaque = false
         panel.hasShadow = true
 
-        // Center on screen
+        // Position at bottom center of screen
         if let screen = NSScreen.main {
             let screenFrame = screen.visibleFrame
             let panelFrame = panel.frame
             let x = screenFrame.midX - panelFrame.width / 2
-            let y = screenFrame.maxY - panelFrame.height - 100 // Near top of screen
+            let y = screenFrame.minY + 80 // Near bottom of screen
             panel.setFrameOrigin(NSPoint(x: x, y: y))
         }
 
@@ -156,13 +156,16 @@ struct FloatingTranscriptView: View {
                     .foregroundColor(controller.isRecording ? .red : .gray)
             }
 
-            // Transcription text
+            // Transcription text - full width with word wrap
             if !controller.transcription.isEmpty {
-                Text(controller.transcription)
-                    .font(.body)
-                    .foregroundColor(.white.opacity(0.9))
-                    .lineLimit(3)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                ScrollView {
+                    Text(controller.transcription)
+                        .font(.system(size: 15))
+                        .foregroundColor(.white.opacity(0.95))
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .frame(maxHeight: 80)
             } else if controller.isRecording {
                 HStack(spacing: 4) {
                     ForEach(0..<3) { i in
@@ -186,7 +189,7 @@ struct FloatingTranscriptView: View {
             RoundedRectangle(cornerRadius: 12)
                 .fill(Color.black.opacity(0.85))
         )
-        .frame(width: 280)
+        .frame(width: 480)
     }
 }
 

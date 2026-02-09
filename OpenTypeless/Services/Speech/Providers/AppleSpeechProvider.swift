@@ -27,6 +27,7 @@ class AppleSpeechProvider: SpeechRecognitionProvider {
     private var errorHandler: ((Error) -> Void)?
 
     private var finalTranscription: String = ""
+    private var allTranscriptions: [String] = [] // Store all segments
 
     // MARK: - Initialization
 
@@ -105,21 +106,42 @@ class AppleSpeechProvider: SpeechRecognitionProvider {
 
         // Start recognition task
         finalTranscription = ""
+        allTranscriptions = []
 
         recognitionTask = recognizer.recognitionTask(with: request) { [weak self] result, error in
             guard let self = self else { return }
 
             if let error = error {
+                // Check if it's just a cancellation
+                let nsError = error as NSError
+                if nsError.domain == "kAFAssistantErrorDomain" && nsError.code == 1110 {
+                    // Recognition was cancelled, not an error
+                    print("[AppleSpeech] Recognition cancelled (expected)")
+                    return
+                }
                 self.errorHandler?(error)
                 return
             }
 
             if let result = result {
                 let transcription = result.bestTranscription.formattedString
-                self.finalTranscription = transcription
+
+                // If this is a final result for this segment, save it
+                if result.isFinal {
+                    if !transcription.isEmpty {
+                        self.allTranscriptions.append(transcription)
+                        print("[AppleSpeech] Final segment: \(transcription)")
+                    }
+                    self.finalTranscription = self.allTranscriptions.joined(separator: " ")
+                } else {
+                    // For partial results, show current segment + previous segments
+                    let previousText = self.allTranscriptions.joined(separator: " ")
+                    let fullText = previousText.isEmpty ? transcription : previousText + " " + transcription
+                    self.finalTranscription = fullText
+                }
 
                 let speechResult = SpeechRecognitionResult(
-                    text: transcription,
+                    text: self.finalTranscription,
                     isFinal: result.isFinal,
                     confidence: result.bestTranscription.segments.last?.confidence,
                     language: language
