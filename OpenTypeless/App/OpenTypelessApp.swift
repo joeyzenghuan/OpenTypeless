@@ -21,7 +21,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // Managers
     private let hotkeyManager = HotkeyManager.shared
     private let floatingPanel = FloatingPanelController.shared
-    private var speechProvider: AppleSpeechProvider?
+    private var speechProvider: (any SpeechRecognitionProvider)?
     private var aiProvider: AzureOpenAIProvider?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -138,9 +138,31 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func setupSpeechRecognition() {
         print("[App] Setting up speech recognition...")
-        print("[App] Using Apple Speech Framework")
 
-        speechProvider = AppleSpeechProvider()
+        // Get selected provider from settings
+        let selectedProvider = UserDefaults.standard.string(forKey: "speechProvider") ?? "apple"
+        print("[App] Selected speech provider: \(selectedProvider)")
+
+        switch selectedProvider {
+        case "azure":
+            print("[App] Using Azure Speech Service")
+            let azureProvider = AzureSpeechProvider()
+            if azureProvider.isAvailable {
+                speechProvider = azureProvider
+            } else {
+                print("[App] ⚠️ Azure Speech not configured, falling back to Apple Speech")
+                speechProvider = AppleSpeechProvider()
+            }
+        case "whisper":
+            print("[App] Whisper API not implemented yet, using Apple Speech")
+            speechProvider = AppleSpeechProvider()
+        case "local-whisper":
+            print("[App] Local Whisper not implemented yet, using Apple Speech")
+            speechProvider = AppleSpeechProvider()
+        default:
+            print("[App] Using Apple Speech Framework")
+            speechProvider = AppleSpeechProvider()
+        }
 
         speechProvider?.onPartialResult { [weak self] result in
             print("[App] Partial result: \(result.text)")
@@ -157,6 +179,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         print("[App] AI polish: \(aiEnabled ? "enabled" : "disabled")")
 
         print("[App] ✅ Speech recognition setup complete")
+        print("[App] Active provider: \(speechProvider?.name ?? "unknown")")
     }
 
     // MARK: - Voice Input
