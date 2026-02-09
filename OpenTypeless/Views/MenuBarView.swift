@@ -48,8 +48,8 @@ struct MenuBarView: View {
 
                     Divider()
 
-                    // Settings button
-                    Button(action: openSettings) {
+                    // Settings button - use SettingsLink for macOS 14+
+                    SettingsLink {
                         HStack {
                             Image(systemName: "gear")
                             Text("设置")
@@ -81,10 +81,6 @@ struct MenuBarView: View {
             }
         }
         .frame(width: 320, height: 400)
-    }
-
-    private func openSettings() {
-        NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
     }
 }
 

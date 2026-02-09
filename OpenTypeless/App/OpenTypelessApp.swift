@@ -1,4 +1,6 @@
 import SwiftUI
+import AVFoundation
+import ApplicationServices
 
 @main
 struct OpenTypelessApp: App {
@@ -41,7 +43,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             popover.performClose(nil)
         } else {
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-            NSApp.activate(ignoringOtherApps: true)
+            popover.contentViewController?.view.window?.makeKey()
         }
     }
 
@@ -51,12 +53,23 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             print("Microphone permission: \(granted)")
         }
 
-        // Check accessibility permission
-        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true]
-        let accessibilityEnabled = AXIsProcessTrustedWithOptions(options as CFDictionary)
-        print("Accessibility permission: \(accessibilityEnabled)")
+        // Check accessibility permission with prompt
+        // This will show a system dialog directing user to Settings
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true]
+            let accessibilityEnabled = AXIsProcessTrustedWithOptions(options as CFDictionary)
+            print("Accessibility permission: \(accessibilityEnabled)")
+
+            if !accessibilityEnabled {
+                print("⚠️ Accessibility permission required for text insertion.")
+                print("   Please go to: System Settings → Privacy & Security → Accessibility")
+                print("   Then add OpenTypeless (or Xcode if running from Xcode)")
+            }
+        }
+    }
+
+    // Check accessibility permission status
+    static var isAccessibilityEnabled: Bool {
+        return AXIsProcessTrusted()
     }
 }
-
-import AVFoundation
-import ApplicationServices
