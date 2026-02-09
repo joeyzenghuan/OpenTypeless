@@ -86,10 +86,10 @@ class FloatingPanelController: NSObject, ObservableObject {
             .environmentObject(self)
 
         let hostingView = NSHostingView(rootView: contentView)
-        hostingView.frame = NSRect(x: 0, y: 0, width: 500, height: 150)
+        hostingView.frame = NSRect(x: 0, y: 0, width: 520, height: 200)
 
         let panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 500, height: 150),
+            contentRect: NSRect(x: 0, y: 0, width: 520, height: 200),
             styleMask: [.nonactivatingPanel, .fullSizeContentView, .hudWindow],
             backing: .buffered,
             defer: false
@@ -158,14 +158,15 @@ struct FloatingTranscriptView: View {
 
             // Transcription text - full width with word wrap
             if !controller.transcription.isEmpty {
-                ScrollView {
+                ScrollView(.vertical, showsIndicators: true) {
                     Text(controller.transcription)
-                        .font(.system(size: 15))
+                        .font(.system(size: 16))
                         .foregroundColor(.white.opacity(0.95))
                         .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.trailing, 8)
                 }
-                .frame(maxHeight: 80)
+                .frame(minHeight: 60, maxHeight: 120)
             } else if controller.isRecording {
                 HStack(spacing: 4) {
                     ForEach(0..<3) { i in
@@ -184,12 +185,12 @@ struct FloatingTranscriptView: View {
                 }
             }
         }
-        .padding(16)
+        .padding(20)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(Color.black.opacity(0.85))
+                .fill(Color.black.opacity(0.9))
         )
-        .frame(width: 480)
+        .frame(width: 500, height: 180)
     }
 }
 
