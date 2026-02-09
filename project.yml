@@ -31,6 +31,8 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         # Menu bar app - don't show in dock
         INFOPLIST_KEY_LSUIElement: true
+        # Bridging header for Azure Speech SDK
+        SWIFT_OBJC_BRIDGING_HEADER: "OpenTypeless/Resources/OpenTypeless-Bridging-Header.h"
     info:
       path: OpenTypeless/Resources/Info.plist
       properties:
