@@ -225,6 +225,7 @@ struct AIProviderSettingsView: View {
     @AppStorage("azureOpenAIDeployment") private var azureOpenAIDeployment = ""
     @AppStorage("azureOpenAIKey") private var azureOpenAIKey = ""
     @AppStorage("azureOpenAIVersion") private var azureOpenAIVersion = "2024-02-15-preview"
+    @AppStorage("azureOpenAIAPIType") private var azureOpenAIAPIType = "chat-completions"
 
     // System Prompt
     @AppStorage("aiSystemPrompt") private var aiSystemPrompt = """
@@ -269,6 +270,23 @@ struct AIProviderSettingsView: View {
                 // Azure OpenAI Settings
                 if aiProvider == "azure-openai" {
                     Section("Azure OpenAI 设置") {
+                        // API Type Selection
+                        Picker("API 类型", selection: $azureOpenAIAPIType) {
+                            Text("Chat Completions API").tag("chat-completions")
+                            Text("Responses API").tag("responses")
+                        }
+                        .pickerStyle(.segmented)
+
+                        if azureOpenAIAPIType == "chat-completions" {
+                            Text("传统的对话补全 API，兼容性好")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        } else {
+                            Text("新一代 API，支持更多功能（需要 2025-04-01-preview 或更新版本）")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+
                         TextField("Endpoint URL", text: $azureOpenAIEndpoint)
                             .textFieldStyle(.roundedBorder)
 
@@ -276,18 +294,20 @@ struct AIProviderSettingsView: View {
                             .font(.caption)
                             .foregroundColor(.secondary)
 
-                        TextField("Deployment Name", text: $azureOpenAIDeployment)
+                        TextField("Deployment / Model Name", text: $azureOpenAIDeployment)
                             .textFieldStyle(.roundedBorder)
 
-                        Text("例如: gpt-4o, gpt-35-turbo")
+                        Text("例如: gpt-4o, gpt-4.1")
                             .font(.caption)
                             .foregroundColor(.secondary)
 
                         SecureField("API Key", text: $azureOpenAIKey)
                             .textFieldStyle(.roundedBorder)
 
-                        TextField("API Version", text: $azureOpenAIVersion)
-                            .textFieldStyle(.roundedBorder)
+                        if azureOpenAIAPIType == "chat-completions" {
+                            TextField("API Version", text: $azureOpenAIVersion)
+                                .textFieldStyle(.roundedBorder)
+                        }
 
                         Link("Azure OpenAI 文档",
                              destination: URL(string: "https://learn.microsoft.com/azure/ai-services/openai/")!)
