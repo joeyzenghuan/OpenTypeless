@@ -149,8 +149,7 @@ class AzureOpenAIProvider: AIProvider {
 
     private func polishWithResponsesAPI(text: String, systemPrompt: String) async throws -> String {
         // Build URL for Responses API
-        // Format: {endpoint}/openai/v1/responses
-        // Note: Responses API uses model name directly, not deployment name in URL
+        // Format: {endpoint}/openai/v1/responses (no api-version needed)
         let urlString = "\(endpoint)/openai/v1/responses"
 
         guard let url = URL(string: urlString) else {
@@ -159,23 +158,13 @@ class AzureOpenAIProvider: AIProvider {
 
         print("[AzureOpenAI] Responses API URL: \(urlString)")
 
-        // Build request body for Responses API
-        // Combine system prompt and user input
-        let combinedPrompt = "\(systemPrompt)\n\n请润色以下文字：\n\(text)"
+        // Build request body - simple format
+        // Combine system prompt and user input into a single string
+        let combinedInput = "\(systemPrompt)\n\n请润色以下文字：\n\(text)"
 
         let requestBody: [String: Any] = [
             "model": deploymentName,
-            "input": [
-                [
-                    "role": "user",
-                    "content": [
-                        [
-                            "type": "input_text",
-                            "text": combinedPrompt
-                        ]
-                    ]
-                ]
-            ]
+            "input": combinedInput
         ]
 
         let jsonData = try JSONSerialization.data(withJSONObject: requestBody)
@@ -216,7 +205,6 @@ class AzureOpenAIProvider: AIProvider {
         }
 
         // Parse Responses API response
-        // Response format: { "id": "...", "output": [...], "status": "completed", ... }
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             print("[AzureOpenAI] ❌ Failed to parse JSON response")
             throw AIProviderError.invalidResponse
@@ -231,17 +219,39 @@ class AzureOpenAIProvider: AIProvider {
         }
 
         // Extract output text
-        // Output format: [{ "type": "message", "content": [{ "type": "output_text", "text": "..." }] }]
-        guard let output = json["output"] as? [[String: Any]],
-              let firstOutput = output.first,
-              let content = firstOutput["content"] as? [[String: Any]],
-              let firstContent = content.first,
-              let outputText = firstContent["text"] as? String else {
+        // Try different response formats
+        var outputText: String?
+
+        // Format 1: output[].content[].text
+        if let output = json["output"] as? [[String: Any]],
+           let firstOutput = output.first,
+           let content = firstOutput["content"] as? [[String: Any]],
+           let firstContent = content.first,
+           let text = firstContent["text"] as? String {
+            outputText = text
+        }
+
+        // Format 2: output[].text (simpler format)
+        if outputText == nil,
+           let output = json["output"] as? [[String: Any]],
+           let firstOutput = output.first,
+           let text = firstOutput["text"] as? String {
+            outputText = text
+        }
+
+        // Format 3: output_text (direct)
+        if outputText == nil,
+           let text = json["output_text"] as? String {
+            outputText = text
+        }
+
+        guard let finalText = outputText else {
             print("[AzureOpenAI] ❌ Failed to extract text from response")
+            print("[AzureOpenAI] Response structure: \(json)")
             throw AIProviderError.invalidResponse
         }
 
-        let polishedText = outputText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let polishedText = finalText.trimmingCharacters(in: .whitespacesAndNewlines)
         print("[AzureOpenAI] ✅ Responses API result: \(polishedText)")
 
         return polishedText
