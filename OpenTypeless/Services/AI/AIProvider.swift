@@ -1,5 +1,12 @@
 import Foundation
 
+/// Result of AI polish with metadata for history tracking
+struct AIPolishResult {
+    let text: String
+    let modelName: String
+    let durationMs: Int
+}
+
 /// Protocol for AI text processing providers
 protocol AIProvider {
     var name: String { get }
@@ -8,6 +15,9 @@ protocol AIProvider {
 
     /// Polish/refine the transcribed text
     func polish(text: String, systemPrompt: String) async throws -> String
+
+    /// Polish with metadata (provider name, model name, duration)
+    func polishWithMetadata(text: String, systemPrompt: String) async throws -> AIPolishResult
 }
 
 /// Errors that can occur during AI processing

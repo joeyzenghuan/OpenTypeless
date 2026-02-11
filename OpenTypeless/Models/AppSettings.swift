@@ -21,7 +21,9 @@ class AppSettings: ObservableObject {
     @AppStorage("azureSpeechKey") var azureSpeechKey: String = ""
     @AppStorage("azureSpeechRegion") var azureSpeechRegion: String = "eastasia"
 
-    // Whisper
+    // Whisper (Azure OpenAI)
+    @AppStorage("whisperEndpoint") var whisperEndpoint: String = ""
+    @AppStorage("whisperDeployment") var whisperDeployment: String = "whisper"
     @AppStorage("whisperAPIKey") var whisperAPIKey: String = ""
     @AppStorage("localWhisperModel") var localWhisperModel: String = "base"
 
@@ -34,10 +36,48 @@ class AppSettings: ObservableObject {
     @AppStorage("ollamaModel") var ollamaModel: String = "llama3"
 
     // MARK: - Shortcuts
+    // Stored as JSON strings representing KeyCombination objects.
+    // Legacy string values (e.g., "fn", "fn+space") are migrated on first access.
 
-    @AppStorage("shortcutVoiceInput") var shortcutVoiceInput: String = "fn"
-    @AppStorage("shortcutHandsFree") var shortcutHandsFree: String = "fn+space"
-    @AppStorage("shortcutTranslate") var shortcutTranslate: String = "fn+left"
+    @AppStorage("shortcutVoiceInput") var shortcutVoiceInput: String = ""
+    @AppStorage("shortcutHandsFree") var shortcutHandsFree: String = ""
+    @AppStorage("shortcutTranslate") var shortcutTranslate: String = ""
+
+    /// Retrieve the KeyCombination for voice input, migrating from legacy format if needed.
+    func getVoiceInputShortcut() -> KeyCombination {
+        return resolveShortcut(shortcutVoiceInput, default: .defaultVoiceInput)
+    }
+
+    /// Retrieve the KeyCombination for hands-free mode, migrating from legacy format if needed.
+    func getHandsFreeShortcut() -> KeyCombination {
+        return resolveShortcut(shortcutHandsFree, default: .defaultHandsFree)
+    }
+
+    /// Retrieve the KeyCombination for translate, migrating from legacy format if needed.
+    func getTranslateShortcut() -> KeyCombination {
+        return resolveShortcut(shortcutTranslate, default: .defaultTranslate)
+    }
+
+    /// Save a KeyCombination for a given shortcut key.
+    func setShortcut(_ combo: KeyCombination, forKey key: String) {
+        let json = combo.toJSON()
+        UserDefaults.standard.set(json, forKey: key)
+    }
+
+    /// Resolve a stored shortcut string, handling empty, legacy, and JSON formats.
+    private func resolveShortcut(_ stored: String, default defaultCombo: KeyCombination) -> KeyCombination {
+        // Empty string: return default
+        if stored.isEmpty {
+            return defaultCombo
+        }
+        // Try JSON first
+        if stored.hasPrefix("{"), let combo = KeyCombination.fromJSON(stored) {
+            return combo
+        }
+        // Legacy string format (e.g., "fn", "fn+space")
+        let combo = KeyCombination.fromLegacyString(stored)
+        return combo.isValid ? combo : defaultCombo
+    }
 
     // MARK: - Initialization
 
@@ -66,6 +106,8 @@ class AppSettings: ObservableObject {
         speechLanguage = "zh-CN"
         azureSpeechKey = ""
         azureSpeechRegion = "eastasia"
+        whisperEndpoint = ""
+        whisperDeployment = "whisper"
         whisperAPIKey = ""
         localWhisperModel = "base"
 
@@ -74,6 +116,10 @@ class AppSettings: ObservableObject {
         claudeAPIKey = ""
         ollamaEndpoint = "http://localhost:11434"
         ollamaModel = "llama3"
+
+        shortcutVoiceInput = ""
+        shortcutHandsFree = ""
+        shortcutTranslate = ""
     }
 }
 

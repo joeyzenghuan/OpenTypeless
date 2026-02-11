@@ -1,53 +1,30 @@
 import Foundation
 
 /// A single transcription record in history
-struct TranscriptionRecord: Identifiable, Codable {
+struct TranscriptionRecord: Identifiable {
     let id: UUID
-    let timestamp: Date
-    let originalText: String
-    let processedText: String?
+    let createdAt: Date
     let language: String
-    let provider: String
-    let duration: TimeInterval
+
+    // Recording
+    let recordingDurationMs: Int
     let audioFilePath: String?
 
-    // Processing metadata
-    let wasFormatted: Bool
-    let wasRewritten: Bool
-    let wasTranslated: Bool
-    let instruction: String?
+    // STT
+    let sttProviderId: String
+    let sttProviderName: String
+    let originalText: String
+    let transcriptionDurationMs: Int
 
-    init(
-        id: UUID = UUID(),
-        timestamp: Date = Date(),
-        originalText: String,
-        processedText: String? = nil,
-        language: String,
-        provider: String,
-        duration: TimeInterval,
-        audioFilePath: String? = nil,
-        wasFormatted: Bool = false,
-        wasRewritten: Bool = false,
-        wasTranslated: Bool = false,
-        instruction: String? = nil
-    ) {
-        self.id = id
-        self.timestamp = timestamp
-        self.originalText = originalText
-        self.processedText = processedText
-        self.language = language
-        self.provider = provider
-        self.duration = duration
-        self.audioFilePath = audioFilePath
-        self.wasFormatted = wasFormatted
-        self.wasRewritten = wasRewritten
-        self.wasTranslated = wasTranslated
-        self.instruction = instruction
-    }
+    // AI Polish (optional)
+    let aiProviderName: String?
+    let aiModelName: String?
+    let polishedText: String?
+    let polishDurationMs: Int?
 
-    /// The text to display (processed if available, otherwise original)
+    /// The text to display (polished if available, otherwise original)
     var displayText: String {
-        return processedText ?? originalText
+        return polishedText ?? originalText
     }
 
     /// Formatted timestamp for display
@@ -55,19 +32,19 @@ struct TranscriptionRecord: Identifiable, Codable {
         let formatter = DateFormatter()
         formatter.dateStyle = .none
         formatter.timeStyle = .short
-        return formatter.string(from: timestamp)
+        return formatter.string(from: createdAt)
     }
 
     /// Formatted date for grouping
     var formattedDate: String {
         let formatter = DateFormatter()
-        if Calendar.current.isDateInToday(timestamp) {
+        if Calendar.current.isDateInToday(createdAt) {
             return "今天"
-        } else if Calendar.current.isDateInYesterday(timestamp) {
+        } else if Calendar.current.isDateInYesterday(createdAt) {
             return "昨天"
         } else {
             formatter.dateFormat = "yyyy-MM-dd"
-            return formatter.string(from: timestamp)
+            return formatter.string(from: createdAt)
         }
     }
 }
@@ -80,8 +57,7 @@ class HistoryManager: ObservableObject {
 
     @Published private(set) var records: [TranscriptionRecord] = []
 
-    private let storageKey = "transcriptionHistory"
-    private let maxRecords = 1000
+    private let database = HistoryDatabase.shared
 
     private init() {
         loadRecords()
@@ -91,13 +67,8 @@ class HistoryManager: ObservableObject {
 
     func addRecord(_ record: TranscriptionRecord) {
         records.insert(record, at: 0)
-
-        // Trim if exceeds max
-        if records.count > maxRecords {
-            records = Array(records.prefix(maxRecords))
-        }
-
-        saveRecords()
+        database.insertRecord(record)
+        print("[History] Record added: \(record.id), text: \(record.displayText.prefix(50))")
     }
 
     func deleteRecord(_ record: TranscriptionRecord) {
@@ -108,12 +79,14 @@ class HistoryManager: ObservableObject {
             try? FileManager.default.removeItem(atPath: audioPath)
         }
 
-        saveRecords()
+        database.deleteRecord(id: record.id)
     }
 
     func deleteRecords(_ ids: Set<UUID>) {
         records.removeAll { ids.contains($0.id) }
-        saveRecords()
+        for id in ids {
+            database.deleteRecord(id: id)
+        }
     }
 
     func clearAllRecords() {
@@ -125,18 +98,14 @@ class HistoryManager: ObservableObject {
         }
 
         records.removeAll()
-        saveRecords()
+        database.clearAll()
     }
 
     // MARK: - Search
 
     func search(query: String) -> [TranscriptionRecord] {
         guard !query.isEmpty else { return records }
-
-        return records.filter {
-            $0.originalText.localizedCaseInsensitiveContains(query) ||
-            ($0.processedText?.localizedCaseInsensitiveContains(query) ?? false)
-        }
+        return database.searchRecords(query: query)
     }
 
     // MARK: - Grouping
@@ -144,40 +113,13 @@ class HistoryManager: ObservableObject {
     func recordsGroupedByDate() -> [(date: String, records: [TranscriptionRecord])] {
         let grouped = Dictionary(grouping: records) { $0.formattedDate }
         return grouped.map { (date: $0.key, records: $0.value) }
-            .sorted { $0.records.first?.timestamp ?? Date() > $1.records.first?.timestamp ?? Date() }
+            .sorted { $0.records.first?.createdAt ?? Date() > $1.records.first?.createdAt ?? Date() }
     }
 
     // MARK: - Persistence
 
     private func loadRecords() {
-        guard let data = UserDefaults.standard.data(forKey: storageKey),
-              let decoded = try? JSONDecoder().decode([TranscriptionRecord].self, from: data) else {
-            return
-        }
-        records = decoded
-    }
-
-    private func saveRecords() {
-        guard let encoded = try? JSONEncoder().encode(records) else { return }
-        UserDefaults.standard.set(encoded, forKey: storageKey)
-    }
-
-    // MARK: - Cleanup
-
-    func cleanupOldRecords(olderThan days: Int) {
-        guard days > 0 else { return }
-
-        let cutoffDate = Calendar.current.date(byAdding: .day, value: -days, to: Date()) ?? Date()
-        let oldRecords = records.filter { $0.timestamp < cutoffDate }
-
-        // Delete audio files
-        for record in oldRecords {
-            if let audioPath = record.audioFilePath {
-                try? FileManager.default.removeItem(atPath: audioPath)
-            }
-        }
-
-        records.removeAll { $0.timestamp < cutoffDate }
-        saveRecords()
+        records = database.fetchRecords(limit: 1000)
+        print("[History] Loaded \(records.count) records from database")
     }
 }
