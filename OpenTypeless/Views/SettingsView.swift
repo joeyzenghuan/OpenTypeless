@@ -5,19 +5,19 @@ import SwiftUI
 struct SettingsTabView: View {
     var body: some View {
         TabView {
-            GeneralSettingsView()
-                .tabItem {
-                    Label("通用", systemImage: "gear")
-                }
-
             SpeechProviderSettingsView()
                 .tabItem {
-                    Label("语音识别", systemImage: "mic")
+                    Label("语音转文本", systemImage: "mic")
                 }
 
             AIProviderSettingsView()
                 .tabItem {
-                    Label("AI 服务", systemImage: "brain")
+                    Label("AI 润色", systemImage: "brain")
+                }
+
+            GeneralSettingsView()
+                .tabItem {
+                    Label("通用", systemImage: "gear")
                 }
 
             ShortcutSettingsView()
@@ -88,15 +88,22 @@ struct SpeechProviderSettingsView: View {
     @AppStorage("whisperEndpoint") private var whisperEndpoint = ""
     @AppStorage("whisperDeployment") private var whisperDeployment = "whisper"
     @AppStorage("whisperAPIKey") private var whisperAPIKey = ""
+    @AppStorage("gpt4oTranscribeEndpoint") private var gpt4oTranscribeEndpoint = ""
+    @AppStorage("gpt4oTranscribeDeployment") private var gpt4oTranscribeDeployment = "gpt-4o-transcribe"
+    @AppStorage("gpt4oTranscribeAPIKey") private var gpt4oTranscribeAPIKey = ""
+    @AppStorage("gpt4oTranscribeTemperature") private var gpt4oTranscribeTemperature: Double = 0
+    @AppStorage("gpt4oTranscribePrompt") private var gpt4oTranscribePrompt = ""
+    @AppStorage("gpt4oTranscribeLogprobs") private var gpt4oTranscribeLogprobs = false
+    @AppStorage("gpt4oTranscribeLanguage") private var gpt4oTranscribeLanguage = ""
 
     var body: some View {
         Form {
-            Section("语音识别服务") {
+            Section("语音转文本服务") {
                 Picker("提供商", selection: $speechProvider) {
                     HStack {
-                        Image(systemName: "apple.logo")
-                        Text("Apple Speech (推荐)")
-                    }.tag("apple")
+                        Image(systemName: "brain.head.profile")
+                        Text("GPT-4o Transcribe (推荐)")
+                    }.tag("gpt4o-transcribe")
 
                     HStack {
                         Image(systemName: "cloud")
@@ -109,9 +116,9 @@ struct SpeechProviderSettingsView: View {
                     }.tag("whisper")
 
                     HStack {
-                        Image(systemName: "desktopcomputer")
-                        Text("本地 Whisper")
-                    }.tag("local-whisper")
+                        Image(systemName: "apple.logo")
+                        Text("Apple Speech (本地)")
+                    }.tag("apple")
                 }
                 .pickerStyle(.radioGroup)
 
@@ -138,12 +145,12 @@ struct SpeechProviderSettingsView: View {
                         description: "高精度多语言识别。录音结束后发送完整音频进行转写，非实时流式。需要 Azure OpenAI 资源并部署 Whisper 模型。",
                         color: .purple
                     )
-                case "local-whisper":
+                case "gpt4o-transcribe":
                     ProviderInfoBox(
-                        icon: "desktopcomputer",
-                        title: "本地 Whisper",
-                        description: "完全离线运行。需要下载模型文件（约 1-3GB）。",
-                        color: .orange
+                        icon: "brain.head.profile",
+                        title: "GPT-4o Transcribe",
+                        description: "比 Whisper 更高精度的转写模型。支持可选的置信度评分（logprobs）和提示词引导。需要 Azure OpenAI 资源并部署 gpt-4o-transcribe 模型。",
+                        color: .indigo
                     )
                 default:
                     EmptyView()
@@ -189,26 +196,80 @@ struct SpeechProviderSettingsView: View {
                 }
             }
 
-            // Local Whisper Settings
-            if speechProvider == "local-whisper" {
-                Section("本地 Whisper 设置") {
-                    HStack {
-                        Text("模型")
-                        Spacer()
-                        Picker("", selection: .constant("base")) {
-                            Text("Tiny (75MB)").tag("tiny")
-                            Text("Base (142MB)").tag("base")
-                            Text("Small (466MB)").tag("small")
-                            Text("Medium (1.5GB)").tag("medium")
+            // GPT-4o Transcribe Settings
+            if speechProvider == "gpt4o-transcribe" {
+                Section("GPT-4o Transcribe 设置") {
+                    TextField("Endpoint URL", text: $gpt4oTranscribeEndpoint)
+                        .textFieldStyle(.roundedBorder)
+
+                    Text("例如: https://your-resource.openai.azure.com")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    TextField("Deployment Name", text: $gpt4oTranscribeDeployment)
+                        .textFieldStyle(.roundedBorder)
+
+                    Text("GPT-4o Transcribe 模型的部署名称，例如: gpt-4o-transcribe")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    SecureField("API Key", text: $gpt4oTranscribeAPIKey)
+                        .textFieldStyle(.roundedBorder)
+
+                    // Language override
+                    Picker("Language", selection: $gpt4oTranscribeLanguage) {
+                        Text("跟随全局设置").tag("")
+                        ForEach(SupportedLanguage.allCases, id: \.rawValue) { lang in
+                            Text(lang.displayName).tag(lang.rawValue)
                         }
-                        .frame(width: 150)
                     }
 
-                    Button("下载模型") {
-                        // Download model
+                    Text("可选。不设置时使用全局语音语言设置。")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    // Temperature slider
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Text("Temperature")
+                            Spacer()
+                            Text(String(format: "%.2f", gpt4oTranscribeTemperature))
+                                .foregroundColor(.secondary)
+                                .monospacedDigit()
+                        }
+                        Slider(value: $gpt4oTranscribeTemperature, in: 0...1, step: 0.05)
                     }
+
+                    Text("控制转写的随机性。0 表示确定性输出，较高值增加多样性。")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    // Transcription prompt
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("转写提示词 (Prompt)")
+                        TextEditor(text: $gpt4oTranscribePrompt)
+                            .font(.system(size: 12, design: .monospaced))
+                            .frame(minHeight: 60)
+                            .border(Color.gray.opacity(0.3))
+                    }
+
+                    Text("可选提示词，用于引导模型的转写风格或术语。")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    // Logprobs toggle
+                    Toggle("启用置信度评分 (Logprobs)", isOn: $gpt4oTranscribeLogprobs)
+
+                    Text("启用后，API 返回每个 token 的置信度评分，日志中可查看平均置信度。")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    Link("Azure OpenAI 文档",
+                         destination: URL(string: "https://learn.microsoft.com/azure/ai-services/openai/whisper-quickstart")!)
+                        .font(.caption)
                 }
             }
+
         }
         .formStyle(.grouped)
         .padding()

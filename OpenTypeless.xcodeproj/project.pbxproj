@@ -22,6 +22,7 @@
 		E00D322E9B20E92737D0EE9B /* AIProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 364A217E94D33F21BEBCC653 /* AIProvider.swift */; };
 		F35407B0BC82EC963B360805 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 178A68B2A3FB147A3BC530F9 /* SettingsView.swift */; };
 		F4A7B2C8D3E9105F6A8B4D7E /* WhisperSpeechProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3C5E7F9B1D4268A0F3E9C5B /* WhisperSpeechProvider.swift */; };
+		B5D8F3A1E7C6490B2D1A8E3F /* GPT4oTranscribeSpeechProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7E2B4C9A1F5386E0C4D7B2A /* GPT4oTranscribeSpeechProvider.swift */; };
 		FC71AF52DF9B672932644CB6 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E810483641135366C3989138 /* Assets.xcassets */; };
 		B7D3F1A2E4C5890D1F2A6B3C /* KeyCombination.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4E8A7F3D6B9201E3A5C8D4F /* KeyCombination.swift */; };
 		A1B2C3D4E5F60718293A4B5C /* HistoryDatabase.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5E6F7A8B9C0D1E2F3A4B5C6 /* HistoryDatabase.swift */; };
@@ -45,6 +46,7 @@
 		8B84C205582E04AAC212A298 /* AzureOpenAIProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AzureOpenAIProvider.swift; sourceTree = "<group>"; };
 		903354419004A50665D147CE /* Pods_OpenTypeless.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_OpenTypeless.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		A3C5E7F9B1D4268A0F3E9C5B /* WhisperSpeechProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperSpeechProvider.swift; sourceTree = "<group>"; };
+		D7E2B4C9A1F5386E0C4D7B2A /* GPT4oTranscribeSpeechProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GPT4oTranscribeSpeechProvider.swift; sourceTree = "<group>"; };
 		9C2CFE7329D163BD3344B469 /* OpenTypeless.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = OpenTypeless.entitlements; sourceTree = "<group>"; };
 		AB228A1483B43396C4029CE6 /* OpenTypeless-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "OpenTypeless-Bridging-Header.h"; sourceTree = "<group>"; };
 		AF76CB2479930C1E7CEE07A7 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
@@ -163,6 +165,7 @@
 			children = (
 				28A3DD57A9A952DD46C73E99 /* AppleSpeechProvider.swift */,
 				624287DEA4E81D4346FB553C /* AzureSpeechProvider.swift */,
+				D7E2B4C9A1F5386E0C4D7B2A /* GPT4oTranscribeSpeechProvider.swift */,
 				A3C5E7F9B1D4268A0F3E9C5B /* WhisperSpeechProvider.swift */,
 			);
 			path = Providers;
@@ -373,6 +376,7 @@
 				B141FA995B0EE91F82F92043 /* SpeechRecognitionManager.swift in Sources */,
 				69CE4AD000EE3B63287814FD /* SpeechRecognitionProvider.swift in Sources */,
 				135C72512E4B9E44540F3B7A /* TranscriptionRecord.swift in Sources */,
+				B5D8F3A1E7C6490B2D1A8E3F /* GPT4oTranscribeSpeechProvider.swift in Sources */,
 				F4A7B2C8D3E9105F6A8B4D7E /* WhisperSpeechProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

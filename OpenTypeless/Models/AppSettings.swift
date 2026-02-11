@@ -25,7 +25,15 @@ class AppSettings: ObservableObject {
     @AppStorage("whisperEndpoint") var whisperEndpoint: String = ""
     @AppStorage("whisperDeployment") var whisperDeployment: String = "whisper"
     @AppStorage("whisperAPIKey") var whisperAPIKey: String = ""
-    @AppStorage("localWhisperModel") var localWhisperModel: String = "base"
+
+    // GPT-4o Transcribe (Azure OpenAI)
+    @AppStorage("gpt4oTranscribeEndpoint") var gpt4oTranscribeEndpoint: String = ""
+    @AppStorage("gpt4oTranscribeDeployment") var gpt4oTranscribeDeployment: String = "gpt-4o-transcribe"
+    @AppStorage("gpt4oTranscribeAPIKey") var gpt4oTranscribeAPIKey: String = ""
+    @AppStorage("gpt4oTranscribeTemperature") var gpt4oTranscribeTemperature: Double = 0
+    @AppStorage("gpt4oTranscribePrompt") var gpt4oTranscribePrompt: String = ""
+    @AppStorage("gpt4oTranscribeLogprobs") var gpt4oTranscribeLogprobs: Bool = false
+    @AppStorage("gpt4oTranscribeLanguage") var gpt4oTranscribeLanguage: String = ""
 
     // MARK: - AI Settings
 
@@ -91,7 +99,6 @@ class AppSettings: ObservableObject {
         config.azureSubscriptionKey = azureSpeechKey.isEmpty ? nil : azureSpeechKey
         config.azureRegion = azureSpeechRegion.isEmpty ? nil : azureSpeechRegion
         config.openAIAPIKey = whisperAPIKey.isEmpty ? nil : whisperAPIKey
-        config.localWhisperModelSize = SpeechProviderConfig.WhisperModelSize(rawValue: localWhisperModel)
         return config
     }
 
@@ -109,7 +116,13 @@ class AppSettings: ObservableObject {
         whisperEndpoint = ""
         whisperDeployment = "whisper"
         whisperAPIKey = ""
-        localWhisperModel = "base"
+        gpt4oTranscribeEndpoint = ""
+        gpt4oTranscribeDeployment = "gpt-4o-transcribe"
+        gpt4oTranscribeAPIKey = ""
+        gpt4oTranscribeTemperature = 0
+        gpt4oTranscribePrompt = ""
+        gpt4oTranscribeLogprobs = false
+        gpt4oTranscribeLanguage = ""
 
         aiProvider = "openai"
         openaiAPIKey = ""

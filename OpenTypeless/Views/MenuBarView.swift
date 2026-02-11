@@ -7,7 +7,6 @@ struct MenuBarView: View {
     enum Tab {
         case home
         case history
-        case dictionary
         case settings
     }
 
@@ -42,10 +41,6 @@ struct MenuBarView: View {
                     SidebarButton(icon: "clock", title: "历史记录", isSelected: selectedTab == .history) {
                         selectedTab = .history
                     }
-                    SidebarButton(icon: "book", title: "词典", isSelected: selectedTab == .dictionary) {
-                        selectedTab = .dictionary
-                    }
-
                     Spacer()
 
                     Divider()
@@ -67,8 +62,6 @@ struct MenuBarView: View {
                         HomeTabView()
                     case .history:
                         HistoryTabView()
-                    case .dictionary:
-                        DictionaryTabView()
                     case .settings:
                         SettingsTabView()
                     }
@@ -305,37 +298,6 @@ struct HistoryRecordRow: View {
         .padding(8)
         .background(Color(NSColor.controlBackgroundColor))
         .cornerRadius(6)
-    }
-}
-
-struct DictionaryTabView: View {
-    var body: some View {
-        VStack {
-            HStack {
-                Text("个人词典")
-                    .font(.headline)
-                Spacer()
-                Button(action: {}) {
-                    Image(systemName: "plus")
-                }
-                .buttonStyle(.plain)
-            }
-            .padding()
-
-            VStack(spacing: 12) {
-                Spacer()
-                Image(systemName: "book")
-                    .font(.system(size: 40))
-                    .foregroundColor(.secondary)
-                Text("词典为空")
-                    .foregroundColor(.secondary)
-                Text("说话时纠正的词汇会自动添加")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                Spacer()
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 

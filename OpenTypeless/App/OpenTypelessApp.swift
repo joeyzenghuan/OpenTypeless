@@ -224,11 +224,17 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 didFallback = true
                 fallbackFrom = "Azure OpenAI Whisper"
             }
-        case "local-whisper":
-            print("[App] Local Whisper not implemented yet, using Apple Speech")
-            speechProvider = AppleSpeechProvider()
-            didFallback = true
-            fallbackFrom = "Local Whisper"
+        case "gpt4o-transcribe":
+            print("[App] Using GPT-4o Transcribe")
+            let provider = GPT4oTranscribeSpeechProvider()
+            if provider.isAvailable {
+                speechProvider = provider
+            } else {
+                print("[App] GPT-4o Transcribe not configured, falling back to Apple Speech")
+                speechProvider = AppleSpeechProvider()
+                didFallback = true
+                fallbackFrom = "GPT-4o Transcribe"
+            }
         default:
             print("[App] Using Apple Speech Framework")
             speechProvider = AppleSpeechProvider()

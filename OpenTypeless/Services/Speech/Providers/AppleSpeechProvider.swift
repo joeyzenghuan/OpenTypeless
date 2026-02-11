@@ -29,6 +29,7 @@ class AppleSpeechProvider: SpeechRecognitionProvider {
     private var finalTranscription: String = ""
     private var allTranscriptions: [String] = [] // Store all segments
     private var lastPartialResult: String = "" // Track last partial to detect resets
+    private var gotFinalResult = false // Signal that recognition produced a final result
 
     // MARK: - Initialization
 
@@ -95,9 +96,11 @@ class AppleSpeechProvider: SpeechRecognitionProvider {
 
         request.shouldReportPartialResults = true
 
-        // Enable on-device recognition if available (iOS 13+ / macOS 10.15+)
+        // Don't force on-device recognition — when the on-device model isn't
+        // downloaded, forcing it causes silent failures with no results.
+        // The system will still prefer on-device when available.
         if #available(macOS 10.15, *) {
-            request.requiresOnDeviceRecognition = recognizer.supportsOnDeviceRecognition
+            request.requiresOnDeviceRecognition = false
         }
 
         // Setup audio input
@@ -116,6 +119,7 @@ class AppleSpeechProvider: SpeechRecognitionProvider {
         finalTranscription = ""
         allTranscriptions = []
         lastPartialResult = ""
+        gotFinalResult = false
 
         recognitionTask = recognizer.recognitionTask(with: request) { [weak self] result, error in
             guard let self = self else { return }
@@ -153,6 +157,7 @@ class AppleSpeechProvider: SpeechRecognitionProvider {
                         self.allTranscriptions.append(transcription)
                         print("[AppleSpeech] Final segment: \(transcription)")
                     }
+                    self.gotFinalResult = true
                 }
 
                 // Build full transcription from all segments + current partial
@@ -177,11 +182,25 @@ class AppleSpeechProvider: SpeechRecognitionProvider {
         audioEngine?.stop()
         audioEngine?.inputNode.removeTap(onBus: 0)
 
-        // End recognition request
+        // End recognition request — tells the recognizer no more audio is coming,
+        // which triggers it to finalize and produce a final result.
         recognitionRequest?.endAudio()
 
-        // Wait a moment for final results
-        try await Task.sleep(nanoseconds: 200_000_000) // 0.2 seconds
+        // Wait for the recognition to produce a final result, with a 3-second timeout.
+        // The old fixed 200ms delay was too short and often returned before any result arrived.
+        for i in 0..<30 {
+            if gotFinalResult {
+                print("[AppleSpeech] Got final result after \(i * 100)ms")
+                break
+            }
+            // Also break early if we have partial results and the task has completed
+            if !lastPartialResult.isEmpty &&
+               (recognitionTask?.state == .completed || recognitionTask?.state == .canceling) {
+                print("[AppleSpeech] Task completed with partial results after \(i * 100)ms")
+                break
+            }
+            try await Task.sleep(nanoseconds: 100_000_000) // 100ms
+        }
 
         // Save any remaining partial result
         if !lastPartialResult.isEmpty && !allTranscriptions.contains(lastPartialResult) {
