@@ -1,21 +1,23 @@
 import SwiftUI
 
-struct SettingsView: View {
+// MARK: - Settings Tab View (embedded in main window sidebar)
+
+struct SettingsTabView: View {
     var body: some View {
         TabView {
-            GeneralSettingsView()
-                .tabItem {
-                    Label("通用", systemImage: "gear")
-                }
-
             SpeechProviderSettingsView()
                 .tabItem {
-                    Label("语音识别", systemImage: "mic")
+                    Label("语音转文本", systemImage: "mic")
                 }
 
             AIProviderSettingsView()
                 .tabItem {
-                    Label("AI 服务", systemImage: "brain")
+                    Label("AI 润色", systemImage: "brain")
+                }
+
+            GeneralSettingsView()
+                .tabItem {
+                    Label("通用", systemImage: "gear")
                 }
 
             ShortcutSettingsView()
@@ -28,7 +30,15 @@ struct SettingsView: View {
                     Label("关于", systemImage: "info.circle")
                 }
         }
-        .frame(width: 550, height: 500)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+// Keep SettingsView for backward compatibility / preview
+struct SettingsView: View {
+    var body: some View {
+        SettingsTabView()
+            .frame(width: 550, height: 500)
     }
 }
 
@@ -75,16 +85,25 @@ struct SpeechProviderSettingsView: View {
     @AppStorage("speechProvider") private var speechProvider = "apple"
     @AppStorage("azureSpeechKey") private var azureSpeechKey = ""
     @AppStorage("azureSpeechRegion") private var azureSpeechRegion = "swedencentral"
+    @AppStorage("whisperEndpoint") private var whisperEndpoint = ""
+    @AppStorage("whisperDeployment") private var whisperDeployment = "whisper"
     @AppStorage("whisperAPIKey") private var whisperAPIKey = ""
+    @AppStorage("gpt4oTranscribeEndpoint") private var gpt4oTranscribeEndpoint = ""
+    @AppStorage("gpt4oTranscribeDeployment") private var gpt4oTranscribeDeployment = "gpt-4o-transcribe"
+    @AppStorage("gpt4oTranscribeAPIKey") private var gpt4oTranscribeAPIKey = ""
+    @AppStorage("gpt4oTranscribeTemperature") private var gpt4oTranscribeTemperature: Double = 0
+    @AppStorage("gpt4oTranscribePrompt") private var gpt4oTranscribePrompt = ""
+    @AppStorage("gpt4oTranscribeLogprobs") private var gpt4oTranscribeLogprobs = false
+    @AppStorage("gpt4oTranscribeLanguage") private var gpt4oTranscribeLanguage = ""
 
     var body: some View {
         Form {
-            Section("语音识别服务") {
+            Section("语音转文本服务") {
                 Picker("提供商", selection: $speechProvider) {
                     HStack {
-                        Image(systemName: "apple.logo")
-                        Text("Apple Speech (推荐)")
-                    }.tag("apple")
+                        Image(systemName: "brain.head.profile")
+                        Text("GPT-4o Transcribe (推荐)")
+                    }.tag("gpt4o-transcribe")
 
                     HStack {
                         Image(systemName: "cloud")
@@ -93,13 +112,13 @@ struct SpeechProviderSettingsView: View {
 
                     HStack {
                         Image(systemName: "waveform")
-                        Text("OpenAI Whisper")
+                        Text("Azure OpenAI Whisper")
                     }.tag("whisper")
 
                     HStack {
-                        Image(systemName: "desktopcomputer")
-                        Text("本地 Whisper")
-                    }.tag("local-whisper")
+                        Image(systemName: "apple.logo")
+                        Text("Apple Speech (本地)")
+                    }.tag("apple")
                 }
                 .pickerStyle(.radioGroup)
 
@@ -122,16 +141,16 @@ struct SpeechProviderSettingsView: View {
                 case "whisper":
                     ProviderInfoBox(
                         icon: "waveform",
-                        title: "OpenAI Whisper API",
-                        description: "高精度多语言识别。需要 OpenAI API Key，按使用量计费。",
+                        title: "Azure OpenAI Whisper",
+                        description: "高精度多语言识别。录音结束后发送完整音频进行转写，非实时流式。需要 Azure OpenAI 资源并部署 Whisper 模型。",
                         color: .purple
                     )
-                case "local-whisper":
+                case "gpt4o-transcribe":
                     ProviderInfoBox(
-                        icon: "desktopcomputer",
-                        title: "本地 Whisper",
-                        description: "完全离线运行。需要下载模型文件（约 1-3GB）。",
-                        color: .orange
+                        icon: "brain.head.profile",
+                        title: "GPT-4o Transcribe",
+                        description: "比 Whisper 更高精度的转写模型。支持可选的置信度评分（logprobs）和提示词引导。需要 Azure OpenAI 资源并部署 gpt-4o-transcribe 模型。",
+                        color: .indigo
                     )
                 default:
                     EmptyView()
@@ -153,35 +172,104 @@ struct SpeechProviderSettingsView: View {
 
             // Whisper API Settings
             if speechProvider == "whisper" {
-                Section("OpenAI Whisper 设置") {
-                    SecureField("API Key", text: $whisperAPIKey)
+                Section("Azure OpenAI Whisper 设置") {
+                    TextField("Endpoint URL", text: $whisperEndpoint)
+                        .textFieldStyle(.roundedBorder)
 
-                    Link("获取 OpenAI API Key",
-                         destination: URL(string: "https://platform.openai.com/api-keys")!)
+                    Text("例如: https://your-resource.openai.azure.com")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    TextField("Deployment Name", text: $whisperDeployment)
+                        .textFieldStyle(.roundedBorder)
+
+                    Text("Whisper 模型的部署名称，例如: whisper")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    SecureField("API Key", text: $whisperAPIKey)
+                        .textFieldStyle(.roundedBorder)
+
+                    Link("Azure OpenAI Whisper 文档",
+                         destination: URL(string: "https://learn.microsoft.com/azure/ai-services/openai/whisper-quickstart")!)
                         .font(.caption)
                 }
             }
 
-            // Local Whisper Settings
-            if speechProvider == "local-whisper" {
-                Section("本地 Whisper 设置") {
-                    HStack {
-                        Text("模型")
-                        Spacer()
-                        Picker("", selection: .constant("base")) {
-                            Text("Tiny (75MB)").tag("tiny")
-                            Text("Base (142MB)").tag("base")
-                            Text("Small (466MB)").tag("small")
-                            Text("Medium (1.5GB)").tag("medium")
+            // GPT-4o Transcribe Settings
+            if speechProvider == "gpt4o-transcribe" {
+                Section("GPT-4o Transcribe 设置") {
+                    TextField("Endpoint URL", text: $gpt4oTranscribeEndpoint)
+                        .textFieldStyle(.roundedBorder)
+
+                    Text("例如: https://your-resource.openai.azure.com")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    TextField("Deployment Name", text: $gpt4oTranscribeDeployment)
+                        .textFieldStyle(.roundedBorder)
+
+                    Text("GPT-4o Transcribe 模型的部署名称，例如: gpt-4o-transcribe")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    SecureField("API Key", text: $gpt4oTranscribeAPIKey)
+                        .textFieldStyle(.roundedBorder)
+
+                    // Language override
+                    Picker("Language", selection: $gpt4oTranscribeLanguage) {
+                        Text("跟随全局设置").tag("")
+                        ForEach(SupportedLanguage.allCases, id: \.rawValue) { lang in
+                            Text(lang.displayName).tag(lang.rawValue)
                         }
-                        .frame(width: 150)
                     }
 
-                    Button("下载模型") {
-                        // Download model
+                    Text("可选。不设置时使用全局语音语言设置。")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    // Temperature slider
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Text("Temperature")
+                            Spacer()
+                            Text(String(format: "%.2f", gpt4oTranscribeTemperature))
+                                .foregroundColor(.secondary)
+                                .monospacedDigit()
+                        }
+                        Slider(value: $gpt4oTranscribeTemperature, in: 0...1, step: 0.05)
                     }
+
+                    Text("控制转写的随机性。0 表示确定性输出，较高值增加多样性。")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    // Transcription prompt
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("转写提示词 (Prompt)")
+                        TextEditor(text: $gpt4oTranscribePrompt)
+                            .font(.system(size: 12, design: .monospaced))
+                            .frame(minHeight: 60)
+                            .border(Color.gray.opacity(0.3))
+                    }
+
+                    Text("可选提示词，用于引导模型的转写风格或术语。")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    // Logprobs toggle
+                    Toggle("启用置信度评分 (Logprobs)", isOn: $gpt4oTranscribeLogprobs)
+
+                    Text("启用后，API 返回每个 token 的置信度评分，日志中可查看平均置信度。")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    Link("Azure OpenAI 文档",
+                         destination: URL(string: "https://learn.microsoft.com/azure/ai-services/openai/whisper-quickstart")!)
+                        .font(.caption)
                 }
             }
+
         }
         .formStyle(.grouped)
         .padding()
@@ -412,65 +500,262 @@ struct AIProviderSettingsView: View {
 // MARK: - Shortcut Settings
 
 struct ShortcutSettingsView: View {
+    @AppStorage("shortcutVoiceInput") private var shortcutVoiceInput: String = ""
+    @AppStorage("shortcutHandsFree") private var shortcutHandsFree: String = ""
+    @AppStorage("shortcutTranslate") private var shortcutTranslate: String = ""
+
     var body: some View {
         Form {
             Section("键盘快捷键") {
-                HStack {
-                    VStack(alignment: .leading) {
-                        Text("语音输入")
-                        Text("按住说话，释放后插入文本模式")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    Spacer()
-                    Text("fn")
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(Color(NSColor.controlBackgroundColor))
-                        .cornerRadius(6)
-                }
+                ShortcutRow(
+                    title: "语音输入",
+                    subtitle: "按住说话，释放后插入文本",
+                    defaultCombo: .defaultVoiceInput,
+                    storageKey: "shortcutVoiceInput",
+                    storedValue: $shortcutVoiceInput
+                )
 
-                HStack {
-                    VStack(alignment: .leading) {
-                        Text("免提模式")
-                        Text("无需按住，再次按下停止")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    Spacer()
-                    HStack(spacing: 4) {
-                        Text("fn")
-                        Text("+")
-                        Text("Space")
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(Color(NSColor.controlBackgroundColor))
-                    .cornerRadius(6)
-                }
+                ShortcutRow(
+                    title: "免提模式",
+                    subtitle: "按一次开始，再按一次停止",
+                    defaultCombo: .defaultHandsFree,
+                    storageKey: "shortcutHandsFree",
+                    storedValue: $shortcutHandsFree
+                )
 
+                ShortcutRow(
+                    title: "翻译模式",
+                    subtitle: "翻译选中的文本",
+                    defaultCombo: .defaultTranslate,
+                    storageKey: "shortcutTranslate",
+                    storedValue: $shortcutTranslate
+                )
+            }
+
+            Section {
                 HStack {
-                    VStack(alignment: .leading) {
-                        Text("翻译模式")
-                        Text("翻译选中的文本")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
                     Spacer()
-                    HStack(spacing: 4) {
-                        Text("fn")
-                        Text("+")
-                        Text("←")
+                    Button("恢复默认快捷键") {
+                        shortcutVoiceInput = ""
+                        shortcutHandsFree = ""
+                        shortcutTranslate = ""
+                        HotkeyManager.shared.reloadShortcuts()
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(Color(NSColor.controlBackgroundColor))
-                    .cornerRadius(6)
+                    .font(.caption)
+                    Spacer()
+                }
+            }
+
+            Section("说明") {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("点击快捷键区域，然后按下想要的按键组合即可设置。")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Text("支持 fn、\u{2318}Command、\u{2325}Option、\u{2303}Control、\u{21E7}Shift 及其组合。")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Text("可以单独使用修饰键（如 fn），也可以组合修饰键 + 普通键（如 \u{2318}\u{21E7}R）。")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
             }
         }
         .formStyle(.grouped)
         .padding()
+    }
+}
+
+// MARK: - Shortcut Row
+
+/// A single row in the shortcut settings list with label and a recorder field.
+struct ShortcutRow: View {
+    let title: String
+    let subtitle: String
+    let defaultCombo: KeyCombination
+    let storageKey: String
+    @Binding var storedValue: String
+
+    var body: some View {
+        HStack {
+            VStack(alignment: .leading) {
+                Text(title)
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            Spacer()
+            ShortcutRecorderView(
+                currentCombo: resolvedCombo,
+                onRecord: { combo in
+                    storedValue = combo.toJSON()
+                    HotkeyManager.shared.reloadShortcuts()
+                },
+                onClear: {
+                    storedValue = ""
+                    HotkeyManager.shared.reloadShortcuts()
+                }
+            )
+        }
+    }
+
+    private var resolvedCombo: KeyCombination {
+        if storedValue.isEmpty {
+            return defaultCombo
+        }
+        if storedValue.hasPrefix("{"), let combo = KeyCombination.fromJSON(storedValue) {
+            return combo
+        }
+        let combo = KeyCombination.fromLegacyString(storedValue)
+        return combo.isValid ? combo : defaultCombo
+    }
+}
+
+// MARK: - Shortcut Recorder View
+
+/// An interactive key recorder field. Click to start recording, press a key combination,
+/// and the shortcut is captured. Supports modifier-only shortcuts (wait for a brief timeout
+/// after modifiers are pressed without a regular key) and modifier+key combos.
+struct ShortcutRecorderView: View {
+    let currentCombo: KeyCombination
+    let onRecord: (KeyCombination) -> Void
+    let onClear: () -> Void
+
+    @State private var isRecording = false
+    @State private var pendingModifiers: NSEvent.ModifierFlags = []
+    @State private var localMonitor: Any?
+    @State private var flagsMonitor: Any?
+    @State private var modifierTimer: Timer?
+
+    /// How long to wait after modifier keys are pressed before accepting a modifier-only shortcut.
+    private let modifierOnlyDelay: TimeInterval = 0.8
+
+    var body: some View {
+        HStack(spacing: 4) {
+            if isRecording {
+                Text("按下快捷键...")
+                    .foregroundColor(.accentColor)
+                    .font(.system(size: 12))
+            } else {
+                Text(currentCombo.displayString)
+                    .font(.system(size: 13, weight: .medium))
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .frame(minWidth: 80)
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(isRecording ? Color.accentColor.opacity(0.15) : Color(NSColor.controlBackgroundColor))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 6)
+                .stroke(isRecording ? Color.accentColor : Color.clear, lineWidth: 1.5)
+        )
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if isRecording {
+                stopRecording()
+            } else {
+                startRecording()
+            }
+        }
+        .contextMenu {
+            Button("清除快捷键") {
+                onClear()
+            }
+        }
+    }
+
+    private func startRecording() {
+        isRecording = true
+        pendingModifiers = []
+
+        // Temporarily stop the global hotkey manager so it doesn't interfere with recording
+        HotkeyManager.shared.stopMonitoring()
+
+        // Monitor key events locally (for when the settings window is focused)
+        localMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { event in
+            self.handleRecordedKeyEvent(event)
+            return nil // Consume the event
+        }
+
+        // Monitor flags changed for modifier-only shortcuts
+        flagsMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { event in
+            self.handleRecordedFlagsChanged(event)
+            return event
+        }
+    }
+
+    private func stopRecording() {
+        isRecording = false
+        pendingModifiers = []
+        modifierTimer?.invalidate()
+        modifierTimer = nil
+
+        if let monitor = localMonitor {
+            NSEvent.removeMonitor(monitor)
+            localMonitor = nil
+        }
+        if let monitor = flagsMonitor {
+            NSEvent.removeMonitor(monitor)
+            flagsMonitor = nil
+        }
+
+        // Restart global hotkey monitoring
+        HotkeyManager.shared.startMonitoring()
+    }
+
+    private func handleRecordedKeyEvent(_ event: NSEvent) {
+        // Cancel any pending modifier-only timer
+        modifierTimer?.invalidate()
+        modifierTimer = nil
+
+        // Escape key cancels recording
+        if event.keyCode == 53 { // kVK_Escape
+            stopRecording()
+            return
+        }
+
+        // Build combination from event
+        let combo = KeyCombination.fromEvent(event)
+
+        if combo.isValid {
+            onRecord(combo)
+            stopRecording()
+        }
+    }
+
+    private func handleRecordedFlagsChanged(_ event: NSEvent) {
+        let flags = event.modifierFlags.intersection([.command, .option, .control, .shift, .function])
+
+        if !flags.isEmpty {
+            // Modifiers are held: start/restart the timer
+            pendingModifiers = flags
+            modifierTimer?.invalidate()
+            modifierTimer = Timer.scheduledTimer(withTimeInterval: modifierOnlyDelay, repeats: false) { _ in
+                DispatchQueue.main.async {
+                    // Accept as modifier-only shortcut
+                    let combo = KeyCombination.fromModifierFlags(self.pendingModifiers)
+                    if combo.isValid {
+                        self.onRecord(combo)
+                    }
+                    self.stopRecording()
+                }
+            }
+        } else {
+            // All modifiers released
+            if !pendingModifiers.isEmpty {
+                // If the timer hasn't fired yet but modifiers were released,
+                // accept as modifier-only shortcut immediately
+                modifierTimer?.invalidate()
+                modifierTimer = nil
+                let combo = KeyCombination.fromModifierFlags(pendingModifiers)
+                if combo.isValid {
+                    onRecord(combo)
+                }
+                stopRecording()
+            }
+        }
     }
 }
 

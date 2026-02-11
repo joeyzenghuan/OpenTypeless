@@ -8,21 +8,25 @@ struct OpenTypelessApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     var body: some Scene {
-        Settings {
-            SettingsView()
-        }
+        // No visible scene — the app is driven entirely by the menu bar icon
+        // and a programmatically-managed NSWindow.
+        Settings { EmptyView() }
     }
 }
 
-class AppDelegate: NSObject, NSApplicationDelegate {
+class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var statusItem: NSStatusItem!
-    private var popover: NSPopover!
+    private var mainWindow: NSWindow?
 
     // Managers
     private let hotkeyManager = HotkeyManager.shared
     private let floatingPanel = FloatingPanelController.shared
     private var speechProvider: (any SpeechRecognitionProvider)?
     private var aiProvider: AzureOpenAIProvider?
+    private var settingsObserver: NSObjectProtocol?
+
+    // Timing for history records
+    private var recordingStartTime: Date?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         print("========================================")
@@ -33,6 +37,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         requestPermissions()
         setupHotkeys()
         setupSpeechRecognition()
+        observeSettingsChanges()
 
         print("[App] ✅ App initialization complete")
         print("========================================")
@@ -60,27 +65,51 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 // Fallback to SF Symbol if custom icon not found
                 button.image = NSImage(systemSymbolName: "mic.fill", accessibilityDescription: "OpenTypeless")
             }
-            button.action = #selector(togglePopover)
+            button.action = #selector(toggleMainWindow)
             print("[App] ✅ Menu bar icon created")
         }
 
-        popover = NSPopover()
-        popover.contentSize = NSSize(width: 320, height: 400)
-        popover.behavior = .transient
-        popover.contentViewController = NSHostingController(rootView: MenuBarView())
+        // Create the main window
+        let hostingController = NSHostingController(rootView: MenuBarView())
+        let window = NSWindow(contentViewController: hostingController)
+        window.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
+        window.titlebarAppearsTransparent = true
+        window.titleVisibility = .hidden
+        window.setContentSize(NSSize(width: 700, height: 520))
+        window.minSize = NSSize(width: 600, height: 480)
+        window.isReleasedWhenClosed = false
+        window.delegate = self
+        window.title = "OpenTypeless"
+        mainWindow = window
 
         print("[App] ✅ Menu bar setup complete")
     }
 
-    @objc private func togglePopover() {
-        guard let button = statusItem.button else { return }
+    @objc private func toggleMainWindow() {
+        guard let window = mainWindow else { return }
 
-        if popover.isShown {
-            popover.performClose(nil)
+        if window.isVisible {
+            window.orderOut(nil)
         } else {
-            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-            popover.contentViewController?.view.window?.makeKey()
+            // Position the window below the menu bar icon
+            if let button = statusItem.button, let buttonWindow = button.window {
+                let buttonRect = button.convert(button.bounds, to: nil)
+                let screenRect = buttonWindow.convertToScreen(buttonRect)
+                let windowWidth = window.frame.width
+                let x = screenRect.midX - windowWidth / 2
+                let y = screenRect.minY - window.frame.height - 4
+                window.setFrameOrigin(NSPoint(x: x, y: y))
+            }
+            window.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
         }
+    }
+
+    // MARK: - NSWindowDelegate
+
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        sender.orderOut(nil)
+        return false
     }
 
     // MARK: - Permissions
@@ -128,18 +157,36 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func setupHotkeys() {
         print("[App] Setting up hotkeys...")
 
-        hotkeyManager.onFnKeyDown = { [weak self] in
-            print("[App] 🎤 fn key pressed - starting voice input")
+        // Voice input: hold-to-talk
+        hotkeyManager.onVoiceInputDown = { [weak self] in
+            print("[App] Voice input shortcut pressed - starting voice input")
             self?.startVoiceInput()
         }
 
-        hotkeyManager.onFnKeyUp = { [weak self] in
-            print("[App] 🛑 fn key released - stopping voice input")
+        hotkeyManager.onVoiceInputUp = { [weak self] in
+            print("[App] Voice input shortcut released - stopping voice input")
             self?.stopVoiceInput()
         }
 
+        // Hands-free mode: toggle
+        hotkeyManager.onHandsFreeToggle = { [weak self] isActive in
+            if isActive {
+                print("[App] Hands-free mode ON")
+                self?.startVoiceInput()
+            } else {
+                print("[App] Hands-free mode OFF")
+                self?.stopVoiceInput()
+            }
+        }
+
+        // Translate mode: single press
+        hotkeyManager.onTranslate = {
+            print("[App] Translate shortcut triggered")
+            // TODO: Implement translate selected text
+        }
+
         hotkeyManager.startMonitoring()
-        print("[App] ✅ Hotkey setup complete - Press and hold fn key to start voice input")
+        print("[App] Hotkey setup complete")
     }
 
     // MARK: - Speech Recognition Setup
@@ -151,6 +198,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let selectedProvider = UserDefaults.standard.string(forKey: "speechProvider") ?? "apple"
         print("[App] Selected speech provider: \(selectedProvider)")
 
+        var didFallback = false
+        var fallbackFrom = ""
+
         switch selectedProvider {
         case "azure":
             print("[App] Using Azure Speech Service")
@@ -160,16 +210,42 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             } else {
                 print("[App] ⚠️ Azure Speech not configured, falling back to Apple Speech")
                 speechProvider = AppleSpeechProvider()
+                didFallback = true
+                fallbackFrom = "Azure Speech Service"
             }
         case "whisper":
-            print("[App] Whisper API not implemented yet, using Apple Speech")
-            speechProvider = AppleSpeechProvider()
-        case "local-whisper":
-            print("[App] Local Whisper not implemented yet, using Apple Speech")
-            speechProvider = AppleSpeechProvider()
+            print("[App] Using Azure OpenAI Whisper")
+            let whisperProvider = WhisperSpeechProvider()
+            if whisperProvider.isAvailable {
+                speechProvider = whisperProvider
+            } else {
+                print("[App] Azure OpenAI Whisper not configured, falling back to Apple Speech")
+                speechProvider = AppleSpeechProvider()
+                didFallback = true
+                fallbackFrom = "Azure OpenAI Whisper"
+            }
+        case "gpt4o-transcribe":
+            print("[App] Using GPT-4o Transcribe")
+            let provider = GPT4oTranscribeSpeechProvider()
+            if provider.isAvailable {
+                speechProvider = provider
+            } else {
+                print("[App] GPT-4o Transcribe not configured, falling back to Apple Speech")
+                speechProvider = AppleSpeechProvider()
+                didFallback = true
+                fallbackFrom = "GPT-4o Transcribe"
+            }
         default:
             print("[App] Using Apple Speech Framework")
             speechProvider = AppleSpeechProvider()
+        }
+
+        // Update floating panel with provider info
+        floatingPanel.providerName = speechProvider?.name ?? "Unknown"
+        if didFallback {
+            floatingPanel.fallbackWarning = "\(fallbackFrom) 未配置，已回退到 Apple Speech"
+        } else {
+            floatingPanel.fallbackWarning = nil
         }
 
         speechProvider?.onPartialResult { [weak self] result in
@@ -190,10 +266,63 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         print("[App] Active provider: \(speechProvider?.name ?? "unknown")")
     }
 
+    // MARK: - Settings Observer
+
+    private var lastKnownShortcuts: (String, String, String) = ("", "", "")
+
+    private func observeSettingsChanges() {
+        // Capture initial shortcut values for change detection
+        lastKnownShortcuts = (
+            UserDefaults.standard.string(forKey: "shortcutVoiceInput") ?? "",
+            UserDefaults.standard.string(forKey: "shortcutHandsFree") ?? "",
+            UserDefaults.standard.string(forKey: "shortcutTranslate") ?? ""
+        )
+
+        settingsObserver = NotificationCenter.default.addObserver(
+            forName: UserDefaults.didChangeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            guard let self = self else { return }
+
+            // Check for speech provider changes
+            let current = UserDefaults.standard.string(forKey: "speechProvider") ?? "apple"
+            if current != self.speechProvider?.identifier {
+                print("[App] Speech provider setting changed to: \(current), reinitializing...")
+                self.setupSpeechRecognition()
+            }
+
+            // Check for shortcut changes
+            let newShortcuts = (
+                UserDefaults.standard.string(forKey: "shortcutVoiceInput") ?? "",
+                UserDefaults.standard.string(forKey: "shortcutHandsFree") ?? "",
+                UserDefaults.standard.string(forKey: "shortcutTranslate") ?? ""
+            )
+            if newShortcuts != self.lastKnownShortcuts {
+                self.lastKnownShortcuts = newShortcuts
+                print("[App] Shortcut settings changed, reloading hotkeys...")
+                self.hotkeyManager.reloadShortcuts()
+            }
+        }
+    }
+
     // MARK: - Voice Input
 
     private func startVoiceInput() {
         print("[App] Starting voice input...")
+
+        // Clear any previous error/warning so it doesn't persist across attempts
+        floatingPanel.fallbackWarning = nil
+
+        recordingStartTime = Date()
+        let language = UserDefaults.standard.string(forKey: "speechLanguage") ?? "zh-CN"
+
+        // Begin audio capture synchronously BEFORE any UI work to minimize latency
+        do {
+            try speechProvider?.beginCapture(language: language)
+        } catch {
+            print("[App] ❌ Failed to begin capture: \(error)")
+        }
 
         // Update menu bar icon (tint red when recording)
         DispatchQueue.main.async {
@@ -208,10 +337,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Show floating panel
         floatingPanel.showPanel()
 
-        // Start speech recognition
+        // Complete async recognition setup
         Task {
             do {
-                let language = UserDefaults.standard.string(forKey: "speechLanguage") ?? "zh-CN"
                 print("[App] Starting recognition with language: \(language)")
                 try await speechProvider?.startRecognition(language: language)
                 print("[App] ✅ Speech recognition started")
@@ -225,6 +353,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func stopVoiceInput() {
         print("[App] Stopping voice input...")
 
+        let recordingEndTime = Date()
+        let recordingDurationMs = Int((recordingEndTime.timeIntervalSince(recordingStartTime ?? recordingEndTime)) * 1000)
+
         // Reset menu bar icon
         DispatchQueue.main.async {
             if let image = NSImage(named: "MenuBarIcon") {
@@ -237,15 +368,36 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Stop speech recognition and get result
         Task {
+            // Skip transcription if recording is too short (< 1 second) to avoid accidental triggers
+            if recordingDurationMs < 1000 {
+                print("[App] ⚠️ Recording too short (\(recordingDurationMs)ms < 1000ms), skipping transcription")
+                speechProvider?.cancelRecognition()
+                floatingPanel.hidePanel()
+                return
+            }
+
             do {
+                let sttStartTime = Date()
                 var result = try await speechProvider?.stopRecognition() ?? ""
-                print("[App] ✅ Final transcription: \(result)")
+                let sttEndTime = Date()
+                let transcriptionDurationMs = Int(sttEndTime.timeIntervalSince(sttStartTime) * 1000)
+
+                print("[App] ✅ Final transcription: \(result) (STT: \(transcriptionDurationMs)ms)")
 
                 if result.isEmpty {
                     print("[App] ⚠️ No transcription result")
                     floatingPanel.hidePanel()
                     return
                 }
+
+                let originalText = result
+                let language = UserDefaults.standard.string(forKey: "speechLanguage") ?? "zh-CN"
+                let sttProviderId = speechProvider?.identifier ?? "unknown"
+                let sttProviderName = speechProvider?.name ?? "Unknown"
+                let audioFilePath = speechProvider?.lastAudioFilePath
+
+                // AI polish metadata
+                var aiPolishResult: AIPolishResult?
 
                 // Check if AI polish is enabled
                 let aiEnabled = UserDefaults.standard.bool(forKey: "aiPolishEnabled")
@@ -288,9 +440,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                         }
 
                         do {
-                            let polishedText = try await aiProvider.polish(text: result, systemPrompt: systemPrompt)
-                            print("[App] ✅ AI polished: \(polishedText)")
-                            result = polishedText
+                            let polishResult = try await aiProvider.polishWithMetadata(text: result, systemPrompt: systemPrompt)
+                            print("[App] ✅ AI polished: \(polishResult.text) (model: \(polishResult.modelName), \(polishResult.durationMs)ms)")
+                            result = polishResult.text
+                            aiPolishResult = polishResult
                         } catch {
                             print("[App] ❌ AI polish failed: \(error)")
                             // Continue with original text if AI fails
@@ -300,10 +453,32 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                     }
                 }
 
+                // Save history record
+                let record = TranscriptionRecord(
+                    id: UUID(),
+                    createdAt: Date(),
+                    language: language,
+                    recordingDurationMs: recordingDurationMs,
+                    audioFilePath: audioFilePath,
+                    sttProviderId: sttProviderId,
+                    sttProviderName: sttProviderName,
+                    originalText: originalText,
+                    transcriptionDurationMs: transcriptionDurationMs,
+                    aiProviderName: aiPolishResult != nil ? aiProvider?.name : nil,
+                    aiModelName: aiPolishResult?.modelName,
+                    polishedText: aiPolishResult?.text,
+                    polishDurationMs: aiPolishResult?.durationMs
+                )
+                await HistoryManager.shared.addRecord(record)
+
                 floatingPanel.showResult(result)
                 // Insert text at cursor position
                 await insertText(result)
 
+            } catch SpeechRecognitionError.rateLimited {
+                print("[App] ⚠️ Whisper API rate limit reached (HTTP 429)")
+                floatingPanel.fallbackWarning = "Whisper API 请求频率超限，请稍后再试"
+                floatingPanel.showError("请求过于频繁，请稍等片刻后重试")
             } catch {
                 print("[App] ❌ Failed to stop speech recognition: \(error)")
                 floatingPanel.showError(error.localizedDescription)

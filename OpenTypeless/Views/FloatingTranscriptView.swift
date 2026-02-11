@@ -10,6 +10,8 @@ class FloatingPanelController: NSObject, ObservableObject {
     @Published var transcription: String = ""
     @Published var isRecording: Bool = false
     @Published var statusMessage: String = "准备就绪"
+    @Published var providerName: String = ""
+    @Published var fallbackWarning: String? = nil
 
     override init() {
         super.init()
@@ -28,6 +30,7 @@ class FloatingPanelController: NSObject, ObservableObject {
             self.isRecording = true
             self.statusMessage = "正在录音..."
             self.transcription = ""
+            // fallbackWarning is preserved across sessions; set by AppDelegate
 
             self.panel?.orderFront(nil)
             self.panel?.makeKey()
@@ -159,6 +162,30 @@ struct FloatingTranscriptView: View {
                 }
 
                 Spacer()
+
+                // Provider name badge
+                if !controller.providerName.isEmpty {
+                    Text(controller.providerName)
+                        .font(.caption2)
+                        .foregroundColor(.white.opacity(0.7))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.white.opacity(0.15))
+                        .cornerRadius(4)
+                }
+            }
+
+            // Fallback warning
+            if let warning = controller.fallbackWarning {
+                HStack(spacing: 4) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.caption2)
+                        .foregroundColor(.yellow)
+                    Text(warning)
+                        .font(.caption2)
+                        .foregroundColor(.yellow.opacity(0.9))
+                    Spacer()
+                }
             }
 
             // Transcription text - full width with word wrap

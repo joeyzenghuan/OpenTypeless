@@ -26,7 +26,12 @@ protocol SpeechRecognitionProvider {
     /// Whether the provider is currently available (e.g., has valid API key)
     var isAvailable: Bool { get }
 
-    /// Start speech recognition
+    /// Synchronously begin audio capture to minimize latency.
+    /// Called before UI setup. Providers that need immediate recording should override this.
+    /// - Parameter language: BCP-47 language code (e.g., "en-US", "zh-CN")
+    func beginCapture(language: String) throws
+
+    /// Start speech recognition (async follow-up after beginCapture)
     /// - Parameter language: BCP-47 language code (e.g., "en-US", "zh-CN")
     func startRecognition(language: String) async throws
 
@@ -44,6 +49,17 @@ protocol SpeechRecognitionProvider {
     /// Set handler for errors during recognition
     /// - Parameter handler: Callback with error
     func onError(_ handler: @escaping (Error) -> Void)
+
+    /// Path to the last saved audio file (if applicable, e.g. Whisper provider)
+    var lastAudioFilePath: String? { get }
+}
+
+// Default implementations
+extension SpeechRecognitionProvider {
+    var lastAudioFilePath: String? { nil }
+    func beginCapture(language: String) throws {
+        // Default no-op; providers that need synchronous start override this
+    }
 }
 
 /// Errors that can occur during speech recognition
@@ -54,6 +70,7 @@ enum SpeechRecognitionError: LocalizedError {
     case networkError(underlying: Error)
     case apiKeyMissing
     case recognitionFailed(reason: String)
+    case rateLimited
     case cancelled
 
     var errorDescription: String? {
@@ -70,6 +87,8 @@ enum SpeechRecognitionError: LocalizedError {
             return "API key is missing. Please configure in Settings."
         case .recognitionFailed(let reason):
             return "Recognition failed: \(reason)"
+        case .rateLimited:
+            return "Whisper API rate limit reached. Please wait a moment and try again."
         case .cancelled:
             return "Recognition was cancelled."
         }

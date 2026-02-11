@@ -21,9 +21,19 @@ class AppSettings: ObservableObject {
     @AppStorage("azureSpeechKey") var azureSpeechKey: String = ""
     @AppStorage("azureSpeechRegion") var azureSpeechRegion: String = "eastasia"
 
-    // Whisper
+    // Whisper (Azure OpenAI)
+    @AppStorage("whisperEndpoint") var whisperEndpoint: String = ""
+    @AppStorage("whisperDeployment") var whisperDeployment: String = "whisper"
     @AppStorage("whisperAPIKey") var whisperAPIKey: String = ""
-    @AppStorage("localWhisperModel") var localWhisperModel: String = "base"
+
+    // GPT-4o Transcribe (Azure OpenAI)
+    @AppStorage("gpt4oTranscribeEndpoint") var gpt4oTranscribeEndpoint: String = ""
+    @AppStorage("gpt4oTranscribeDeployment") var gpt4oTranscribeDeployment: String = "gpt-4o-transcribe"
+    @AppStorage("gpt4oTranscribeAPIKey") var gpt4oTranscribeAPIKey: String = ""
+    @AppStorage("gpt4oTranscribeTemperature") var gpt4oTranscribeTemperature: Double = 0
+    @AppStorage("gpt4oTranscribePrompt") var gpt4oTranscribePrompt: String = ""
+    @AppStorage("gpt4oTranscribeLogprobs") var gpt4oTranscribeLogprobs: Bool = false
+    @AppStorage("gpt4oTranscribeLanguage") var gpt4oTranscribeLanguage: String = ""
 
     // MARK: - AI Settings
 
@@ -34,10 +44,48 @@ class AppSettings: ObservableObject {
     @AppStorage("ollamaModel") var ollamaModel: String = "llama3"
 
     // MARK: - Shortcuts
+    // Stored as JSON strings representing KeyCombination objects.
+    // Legacy string values (e.g., "fn", "fn+space") are migrated on first access.
 
-    @AppStorage("shortcutVoiceInput") var shortcutVoiceInput: String = "fn"
-    @AppStorage("shortcutHandsFree") var shortcutHandsFree: String = "fn+space"
-    @AppStorage("shortcutTranslate") var shortcutTranslate: String = "fn+left"
+    @AppStorage("shortcutVoiceInput") var shortcutVoiceInput: String = ""
+    @AppStorage("shortcutHandsFree") var shortcutHandsFree: String = ""
+    @AppStorage("shortcutTranslate") var shortcutTranslate: String = ""
+
+    /// Retrieve the KeyCombination for voice input, migrating from legacy format if needed.
+    func getVoiceInputShortcut() -> KeyCombination {
+        return resolveShortcut(shortcutVoiceInput, default: .defaultVoiceInput)
+    }
+
+    /// Retrieve the KeyCombination for hands-free mode, migrating from legacy format if needed.
+    func getHandsFreeShortcut() -> KeyCombination {
+        return resolveShortcut(shortcutHandsFree, default: .defaultHandsFree)
+    }
+
+    /// Retrieve the KeyCombination for translate, migrating from legacy format if needed.
+    func getTranslateShortcut() -> KeyCombination {
+        return resolveShortcut(shortcutTranslate, default: .defaultTranslate)
+    }
+
+    /// Save a KeyCombination for a given shortcut key.
+    func setShortcut(_ combo: KeyCombination, forKey key: String) {
+        let json = combo.toJSON()
+        UserDefaults.standard.set(json, forKey: key)
+    }
+
+    /// Resolve a stored shortcut string, handling empty, legacy, and JSON formats.
+    private func resolveShortcut(_ stored: String, default defaultCombo: KeyCombination) -> KeyCombination {
+        // Empty string: return default
+        if stored.isEmpty {
+            return defaultCombo
+        }
+        // Try JSON first
+        if stored.hasPrefix("{"), let combo = KeyCombination.fromJSON(stored) {
+            return combo
+        }
+        // Legacy string format (e.g., "fn", "fn+space")
+        let combo = KeyCombination.fromLegacyString(stored)
+        return combo.isValid ? combo : defaultCombo
+    }
 
     // MARK: - Initialization
 
@@ -51,7 +99,6 @@ class AppSettings: ObservableObject {
         config.azureSubscriptionKey = azureSpeechKey.isEmpty ? nil : azureSpeechKey
         config.azureRegion = azureSpeechRegion.isEmpty ? nil : azureSpeechRegion
         config.openAIAPIKey = whisperAPIKey.isEmpty ? nil : whisperAPIKey
-        config.localWhisperModelSize = SpeechProviderConfig.WhisperModelSize(rawValue: localWhisperModel)
         return config
     }
 
@@ -66,14 +113,26 @@ class AppSettings: ObservableObject {
         speechLanguage = "zh-CN"
         azureSpeechKey = ""
         azureSpeechRegion = "eastasia"
+        whisperEndpoint = ""
+        whisperDeployment = "whisper"
         whisperAPIKey = ""
-        localWhisperModel = "base"
+        gpt4oTranscribeEndpoint = ""
+        gpt4oTranscribeDeployment = "gpt-4o-transcribe"
+        gpt4oTranscribeAPIKey = ""
+        gpt4oTranscribeTemperature = 0
+        gpt4oTranscribePrompt = ""
+        gpt4oTranscribeLogprobs = false
+        gpt4oTranscribeLanguage = ""
 
         aiProvider = "openai"
         openaiAPIKey = ""
         claudeAPIKey = ""
         ollamaEndpoint = "http://localhost:11434"
         ollamaModel = "llama3"
+
+        shortcutVoiceInput = ""
+        shortcutHandsFree = ""
+        shortcutTranslate = ""
     }
 }
 

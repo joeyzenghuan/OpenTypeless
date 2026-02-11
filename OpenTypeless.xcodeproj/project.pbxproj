@@ -12,7 +12,7 @@
 		0BB1CB5A828EEF03EF0719A8 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF76CB2479930C1E7CEE07A7 /* AppSettings.swift */; };
 		0F84A751957578580CBE8615 /* OpenTypelessApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00E4DE33B344D333E93E28C0 /* OpenTypelessApp.swift */; };
 		135C72512E4B9E44540F3B7A /* TranscriptionRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = 729F8BDAEF6016D7125444FA /* TranscriptionRecord.swift */; };
-		21ED68DB1B6E1CAD5831F1A2 /* Pods_OpenTypeless.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 75A1398609E1B808BF1D4139 /* Pods_OpenTypeless.framework */; };
+		17F2F65368D5561E8D8DBEA5 /* Pods_OpenTypeless.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 903354419004A50665D147CE /* Pods_OpenTypeless.framework */; };
 		69CE4AD000EE3B63287814FD /* SpeechRecognitionProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D3901535AEEF2DEC1916AEB /* SpeechRecognitionProvider.swift */; };
 		6F04D6402FCB6C34A10E94FD /* AzureOpenAIProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B84C205582E04AAC212A298 /* AzureOpenAIProvider.swift */; };
 		8AEA0FA90ED8E5E9C182BE7C /* HotkeyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C91B68855168E73530DA5130 /* HotkeyManager.swift */; };
@@ -21,25 +21,32 @@
 		D3C53EBA2E3591822AB346F1 /* FloatingTranscriptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D34A33AE50B82738A8CD7EE /* FloatingTranscriptView.swift */; };
 		E00D322E9B20E92737D0EE9B /* AIProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 364A217E94D33F21BEBCC653 /* AIProvider.swift */; };
 		F35407B0BC82EC963B360805 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 178A68B2A3FB147A3BC530F9 /* SettingsView.swift */; };
+		F4A7B2C8D3E9105F6A8B4D7E /* WhisperSpeechProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3C5E7F9B1D4268A0F3E9C5B /* WhisperSpeechProvider.swift */; };
+		B5D8F3A1E7C6490B2D1A8E3F /* GPT4oTranscribeSpeechProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7E2B4C9A1F5386E0C4D7B2A /* GPT4oTranscribeSpeechProvider.swift */; };
 		FC71AF52DF9B672932644CB6 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E810483641135366C3989138 /* Assets.xcassets */; };
+		B7D3F1A2E4C5890D1F2A6B3C /* KeyCombination.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4E8A7F3D6B9201E3A5C8D4F /* KeyCombination.swift */; };
+		A1B2C3D4E5F60718293A4B5C /* HistoryDatabase.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5E6F7A8B9C0D1E2F3A4B5C6 /* HistoryDatabase.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		00E4DE33B344D333E93E28C0 /* OpenTypelessApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenTypelessApp.swift; sourceTree = "<group>"; };
 		0C152EF9B6F66F7308D0ECDA /* OpenTypeless.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = OpenTypeless.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		12E2089F79A838A7A048E8C4 /* Pods-OpenTypeless.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-OpenTypeless.debug.xcconfig"; path = "Target Support Files/Pods-OpenTypeless/Pods-OpenTypeless.debug.xcconfig"; sourceTree = "<group>"; };
 		178A68B2A3FB147A3BC530F9 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		28A3DD57A9A952DD46C73E99 /* AppleSpeechProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSpeechProvider.swift; sourceTree = "<group>"; };
 		2D3901535AEEF2DEC1916AEB /* SpeechRecognitionProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechRecognitionProvider.swift; sourceTree = "<group>"; };
 		364A217E94D33F21BEBCC653 /* AIProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIProvider.swift; sourceTree = "<group>"; };
 		389663F9667847A5F1D6B800 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
-		5055B2BBB164DD3EFE6DF2C4 /* Pods-OpenTypeless.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-OpenTypeless.release.xcconfig"; path = "Target Support Files/Pods-OpenTypeless/Pods-OpenTypeless.release.xcconfig"; sourceTree = "<group>"; };
+		3D5D0FE498CC2A5054AE4723 /* Pods-OpenTypeless.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-OpenTypeless.release.xcconfig"; path = "Target Support Files/Pods-OpenTypeless/Pods-OpenTypeless.release.xcconfig"; sourceTree = "<group>"; };
+		4A255C762E23ABB15D600F12 /* Pods-OpenTypeless.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-OpenTypeless.debug.xcconfig"; path = "Target Support Files/Pods-OpenTypeless/Pods-OpenTypeless.debug.xcconfig"; sourceTree = "<group>"; };
 		5D34A33AE50B82738A8CD7EE /* FloatingTranscriptView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FloatingTranscriptView.swift; sourceTree = "<group>"; };
 		624287DEA4E81D4346FB553C /* AzureSpeechProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AzureSpeechProvider.swift; sourceTree = "<group>"; };
 		729F8BDAEF6016D7125444FA /* TranscriptionRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionRecord.swift; sourceTree = "<group>"; };
-		75A1398609E1B808BF1D4139 /* Pods_OpenTypeless.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_OpenTypeless.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		C4E8A7F3D6B9201E3A5C8D4F /* KeyCombination.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyCombination.swift; sourceTree = "<group>"; };
 		7A8F640A93C0A181DCF75BA5 /* SpeechRecognitionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechRecognitionManager.swift; sourceTree = "<group>"; };
 		8B84C205582E04AAC212A298 /* AzureOpenAIProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AzureOpenAIProvider.swift; sourceTree = "<group>"; };
+		903354419004A50665D147CE /* Pods_OpenTypeless.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_OpenTypeless.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		A3C5E7F9B1D4268A0F3E9C5B /* WhisperSpeechProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperSpeechProvider.swift; sourceTree = "<group>"; };
+		D7E2B4C9A1F5386E0C4D7B2A /* GPT4oTranscribeSpeechProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GPT4oTranscribeSpeechProvider.swift; sourceTree = "<group>"; };
 		9C2CFE7329D163BD3344B469 /* OpenTypeless.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = OpenTypeless.entitlements; sourceTree = "<group>"; };
 		AB228A1483B43396C4029CE6 /* OpenTypeless-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "OpenTypeless-Bridging-Header.h"; sourceTree = "<group>"; };
 		AF76CB2479930C1E7CEE07A7 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
@@ -48,20 +55,31 @@
 		DE12F159A81376B3622768D6 /* Pods-OpenTypeless.debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "Pods-OpenTypeless.debug.xcconfig"; sourceTree = "<group>"; };
 		E810483641135366C3989138 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		FAE28A5F20739EE69F990F30 /* Pods-OpenTypeless.release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "Pods-OpenTypeless.release.xcconfig"; sourceTree = "<group>"; };
+		D5E6F7A8B9C0D1E2F3A4B5C6 /* HistoryDatabase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryDatabase.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		412744A6CDD6F532029F2E3D /* Frameworks */ = {
+		D4A868AB92C4866C12B92DE8 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				21ED68DB1B6E1CAD5831F1A2 /* Pods_OpenTypeless.framework in Frameworks */,
+				17F2F65368D5561E8D8DBEA5 /* Pods_OpenTypeless.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		078413008142DE51242AD88A /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				4A255C762E23ABB15D600F12 /* Pods-OpenTypeless.debug.xcconfig */,
+				3D5D0FE498CC2A5054AE4723 /* Pods-OpenTypeless.release.xcconfig */,
+			);
+			name = Pods;
+			path = Pods;
+			sourceTree = "<group>";
+		};
 		450A7C7FA017980C98879D93 /* AI */ = {
 			isa = PBXGroup;
 			children = (
@@ -77,8 +95,8 @@
 				5CA13D3C010E08A296D90B60 /* OpenTypeless */,
 				7737A3A4BB4835E1DCDF0DD4 /* Pods-OpenTypeless */,
 				E9C04359331FACD7E4739CE9 /* Products */,
-				F702FC376F1ABCB037511ACB /* Pods */,
-				E0D460287CA94EEF1804BE81 /* Frameworks */,
+				078413008142DE51242AD88A /* Pods */,
+				AF2849C6B2E4B94EBC0FFCBF /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -101,9 +119,18 @@
 				F2EFC107468BDCB123CE42CB /* Accessibility */,
 				450A7C7FA017980C98879D93 /* AI */,
 				998F84E708CD6DB8CAA3C6AF /* Audio */,
+				E7F8A9B0C1D2E3F4A5B6C7D8 /* Database */,
 				7A3213C9EB1F5F930A52BB82 /* Speech */,
 			);
 			path = Services;
+			sourceTree = "<group>";
+		};
+		E7F8A9B0C1D2E3F4A5B6C7D8 /* Database */ = {
+			isa = PBXGroup;
+			children = (
+				D5E6F7A8B9C0D1E2F3A4B5C6 /* HistoryDatabase.swift */,
+			);
+			path = Database;
 			sourceTree = "<group>";
 		};
 		60F9690CB31F44930CBB8CBB /* Providers */ = {
@@ -138,6 +165,8 @@
 			children = (
 				28A3DD57A9A952DD46C73E99 /* AppleSpeechProvider.swift */,
 				624287DEA4E81D4346FB553C /* AzureSpeechProvider.swift */,
+				D7E2B4C9A1F5386E0C4D7B2A /* GPT4oTranscribeSpeechProvider.swift */,
+				A3C5E7F9B1D4268A0F3E9C5B /* WhisperSpeechProvider.swift */,
 			);
 			path = Providers;
 			sourceTree = "<group>";
@@ -169,10 +198,19 @@
 			path = Audio;
 			sourceTree = "<group>";
 		};
+		AF2849C6B2E4B94EBC0FFCBF /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				903354419004A50665D147CE /* Pods_OpenTypeless.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		BB0F6427B81494D5B30672BF /* Models */ = {
 			isa = PBXGroup;
 			children = (
 				AF76CB2479930C1E7CEE07A7 /* AppSettings.swift */,
+				C4E8A7F3D6B9201E3A5C8D4F /* KeyCombination.swift */,
 				729F8BDAEF6016D7125444FA /* TranscriptionRecord.swift */,
 			);
 			path = Models;
@@ -184,14 +222,6 @@
 				00E4DE33B344D333E93E28C0 /* OpenTypelessApp.swift */,
 			);
 			path = App;
-			sourceTree = "<group>";
-		};
-		E0D460287CA94EEF1804BE81 /* Frameworks */ = {
-			isa = PBXGroup;
-			children = (
-				75A1398609E1B808BF1D4139 /* Pods_OpenTypeless.framework */,
-			);
-			name = Frameworks;
 			sourceTree = "<group>";
 		};
 		E9C04359331FACD7E4739CE9 /* Products */ = {
@@ -219,16 +249,6 @@
 			path = Accessibility;
 			sourceTree = "<group>";
 		};
-		F702FC376F1ABCB037511ACB /* Pods */ = {
-			isa = PBXGroup;
-			children = (
-				12E2089F79A838A7A048E8C4 /* Pods-OpenTypeless.debug.xcconfig */,
-				5055B2BBB164DD3EFE6DF2C4 /* Pods-OpenTypeless.release.xcconfig */,
-			);
-			name = Pods;
-			path = Pods;
-			sourceTree = "<group>";
-		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -240,7 +260,7 @@
 				41071E7DEEDB4E448D9A68F7 /* Sources */,
 				53BE6899CF1BCE4D2D4DD15E /* Resources */,
 				3BC9B452ADC065A5636B0AAA /* [CP] Embed Pods Frameworks */,
-				412744A6CDD6F532029F2E3D /* Frameworks */,
+				D4A868AB92C4866C12B92DE8 /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -347,13 +367,17 @@
 				6F04D6402FCB6C34A10E94FD /* AzureOpenAIProvider.swift in Sources */,
 				0ABBC1319ACC690D51BE79C6 /* AzureSpeechProvider.swift in Sources */,
 				D3C53EBA2E3591822AB346F1 /* FloatingTranscriptView.swift in Sources */,
+				A1B2C3D4E5F60718293A4B5C /* HistoryDatabase.swift in Sources */,
 				8AEA0FA90ED8E5E9C182BE7C /* HotkeyManager.swift in Sources */,
+				B7D3F1A2E4C5890D1F2A6B3C /* KeyCombination.swift in Sources */,
 				0924D8252DDECF465A749E90 /* MenuBarView.swift in Sources */,
 				0F84A751957578580CBE8615 /* OpenTypelessApp.swift in Sources */,
 				F35407B0BC82EC963B360805 /* SettingsView.swift in Sources */,
 				B141FA995B0EE91F82F92043 /* SpeechRecognitionManager.swift in Sources */,
 				69CE4AD000EE3B63287814FD /* SpeechRecognitionProvider.swift in Sources */,
 				135C72512E4B9E44540F3B7A /* TranscriptionRecord.swift in Sources */,
+				B5D8F3A1E7C6490B2D1A8E3F /* GPT4oTranscribeSpeechProvider.swift in Sources */,
+				F4A7B2C8D3E9105F6A8B4D7E /* WhisperSpeechProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -362,7 +386,7 @@
 /* Begin XCBuildConfiguration section */
 		5F154BCF28B4387BBE69AA42 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 12E2089F79A838A7A048E8C4 /* Pods-OpenTypeless.debug.xcconfig */;
+			baseConfigurationReference = 4A255C762E23ABB15D600F12 /* Pods-OpenTypeless.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = OpenTypeless/Resources/OpenTypeless.entitlements;
@@ -447,7 +471,7 @@
 		};
 		9C1E9EC04F4BF521649829E7 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 5055B2BBB164DD3EFE6DF2C4 /* Pods-OpenTypeless.release.xcconfig */;
+			baseConfigurationReference = 3D5D0FE498CC2A5054AE4723 /* Pods-OpenTypeless.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = OpenTypeless/Resources/OpenTypeless.entitlements;

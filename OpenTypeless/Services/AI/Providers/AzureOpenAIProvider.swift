@@ -59,6 +59,11 @@ class AzureOpenAIProvider: AIProvider {
     // MARK: - AI Processing
 
     func polish(text: String, systemPrompt: String) async throws -> String {
+        let result = try await polishWithMetadata(text: text, systemPrompt: systemPrompt)
+        return result.text
+    }
+
+    func polishWithMetadata(text: String, systemPrompt: String) async throws -> AIPolishResult {
         guard isAvailable else {
             print("[AzureOpenAI] ❌ Not configured")
             throw AIProviderError.notConfigured
@@ -68,12 +73,18 @@ class AzureOpenAIProvider: AIProvider {
         print("[AzureOpenAI] System prompt: \(systemPrompt)")
         print("[AzureOpenAI] Using API type: \(apiType.displayName)")
 
+        let startTime = Date()
+        let polishedText: String
         switch apiType {
         case .chatCompletions:
-            return try await polishWithChatCompletions(text: text, systemPrompt: systemPrompt)
+            polishedText = try await polishWithChatCompletions(text: text, systemPrompt: systemPrompt)
         case .responses:
-            return try await polishWithResponsesAPI(text: text, systemPrompt: systemPrompt)
+            polishedText = try await polishWithResponsesAPI(text: text, systemPrompt: systemPrompt)
         }
+        let durationMs = Int(Date().timeIntervalSince(startTime) * 1000)
+
+        print("[AzureOpenAI] Polish took \(durationMs)ms")
+        return AIPolishResult(text: polishedText, modelName: deploymentName, durationMs: durationMs)
     }
 
     // MARK: - Chat Completions API
