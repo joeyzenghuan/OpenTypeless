@@ -57,6 +57,7 @@ class HistoryManager: ObservableObject {
 
     @Published private(set) var records: [TranscriptionRecord] = []
 
+    private let log = Logger.shared
     private let database = HistoryDatabase.shared
 
     private init() {
@@ -68,7 +69,7 @@ class HistoryManager: ObservableObject {
     func addRecord(_ record: TranscriptionRecord) {
         records.insert(record, at: 0)
         database.insertRecord(record)
-        print("[History] Record added: \(record.id), text: \(record.displayText.prefix(50))")
+        log.debug("Record added: \(record.id), text: \(record.displayText.prefix(50))", tag: "History")
     }
 
     func deleteRecord(_ record: TranscriptionRecord) {
@@ -120,6 +121,6 @@ class HistoryManager: ObservableObject {
 
     private func loadRecords() {
         records = database.fetchRecords(limit: 1000)
-        print("[History] Loaded \(records.count) records from database")
+        log.info("Loaded \(records.count) records from database", tag: "History")
     }
 }

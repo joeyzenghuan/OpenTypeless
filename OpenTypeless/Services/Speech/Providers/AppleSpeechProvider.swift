@@ -188,13 +188,13 @@ class AppleSpeechProvider: SpeechRecognitionProvider {
         // The old fixed 200ms delay was too short and often returned before any result arrived.
         for i in 0..<30 {
             if gotFinalResult {
-                print("[AppleSpeech] Got final result after \(i * 100)ms")
+                log.debug("Got final result after \(i * 100)ms", tag: "AppleSpeech")
                 break
             }
             // Also break early if we have partial results and the task has completed
             if !lastPartialResult.isEmpty &&
                (recognitionTask?.state == .completed || recognitionTask?.state == .canceling) {
-                print("[AppleSpeech] Task completed with partial results after \(i * 100)ms")
+                log.debug("Task completed with partial results after \(i * 100)ms", tag: "AppleSpeech")
                 break
             }
             try await Task.sleep(nanoseconds: 100_000_000) // 100ms

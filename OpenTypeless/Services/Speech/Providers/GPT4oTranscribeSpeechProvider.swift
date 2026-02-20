@@ -46,6 +46,8 @@ class GPT4oTranscribeSpeechProvider: SpeechRecognitionProvider {
 
     // MARK: - Private Properties
 
+    private let log = Logger.shared
+
     private var audioRecorder: AVAudioRecorder?
     private var recordingURL: URL?
     private var isRecording = false
@@ -79,14 +81,14 @@ class GPT4oTranscribeSpeechProvider: SpeechRecognitionProvider {
         self.logprobs = UserDefaults.standard.bool(forKey: "gpt4oTranscribeLogprobs")
         self.languageOverride = UserDefaults.standard.string(forKey: "gpt4oTranscribeLanguage") ?? ""
 
-        print("[GPT4o-Transcribe] Initialized")
-        print("[GPT4o-Transcribe] Endpoint: \(self.endpoint ?? "not set")")
-        print("[GPT4o-Transcribe] Deployment: \(self.deployment ?? "not set")")
-        print("[GPT4o-Transcribe] Key configured: \(self.apiKey?.isEmpty == false ? "yes" : "no")")
-        print("[GPT4o-Transcribe] Temperature: \(self.temperature)")
-        print("[GPT4o-Transcribe] Prompt: \(self.prompt.isEmpty ? "(empty)" : self.prompt.prefix(50) + "...")")
-        print("[GPT4o-Transcribe] Logprobs: \(self.logprobs)")
-        print("[GPT4o-Transcribe] Language override: \(self.languageOverride.isEmpty ? "(global)" : self.languageOverride)")
+        log.info("Initialized", tag: "GPT4o-Transcribe")
+        log.debug("Endpoint: \(self.endpoint ?? "not set")", tag: "GPT4o-Transcribe")
+        log.debug("Deployment: \(self.deployment ?? "not set")", tag: "GPT4o-Transcribe")
+        log.debug("Key configured: \(self.apiKey?.isEmpty == false ? "yes" : "no")", tag: "GPT4o-Transcribe")
+        log.debug("Temperature: \(self.temperature)", tag: "GPT4o-Transcribe")
+        log.debug("Prompt: \(self.prompt.isEmpty ? "(empty)" : self.prompt.prefix(50) + "...")", tag: "GPT4o-Transcribe")
+        log.debug("Logprobs: \(self.logprobs)", tag: "GPT4o-Transcribe")
+        log.debug("Language override: \(self.languageOverride.isEmpty ? "(global)" : self.languageOverride)", tag: "GPT4o-Transcribe")
 
         // Pre-warm the audio hardware so the first recording starts instantly
         prepareNextRecorder()
@@ -102,7 +104,7 @@ class GPT4oTranscribeSpeechProvider: SpeechRecognitionProvider {
         self.prompt = UserDefaults.standard.string(forKey: "gpt4oTranscribePrompt") ?? ""
         self.logprobs = UserDefaults.standard.bool(forKey: "gpt4oTranscribeLogprobs")
         self.languageOverride = UserDefaults.standard.string(forKey: "gpt4oTranscribeLanguage") ?? ""
-        print("[GPT4o-Transcribe] Config reloaded")
+        log.info("Config reloaded", tag: "GPT4o-Transcribe")
     }
 
     // MARK: - Protocol Methods
@@ -118,9 +120,9 @@ class GPT4oTranscribeSpeechProvider: SpeechRecognitionProvider {
             let recorder = try AVAudioRecorder(url: fileURL, settings: recordingSettings)
             recorder.prepareToRecord()
             audioRecorder = recorder
-            print("[GPT4o-Transcribe] Recorder prepared: \(fileURL.lastPathComponent)")
+            log.debug("Recorder prepared: \(fileURL.lastPathComponent)", tag: "GPT4o-Transcribe")
         } catch {
-            print("[GPT4o-Transcribe] Failed to prepare recorder: \(error)")
+            log.info("Failed to prepare recorder: \(error)", tag: "GPT4o-Transcribe")
             audioRecorder = nil
         }
     }
@@ -129,7 +131,7 @@ class GPT4oTranscribeSpeechProvider: SpeechRecognitionProvider {
     /// The recorder is already prepared (audio hardware warmed up), so record() is instant.
     func beginCapture(language: String) throws {
         guard isAvailable else {
-            print("[GPT4o-Transcribe] Not configured")
+            log.info("Not configured", tag: "GPT4o-Transcribe")
             throw SpeechRecognitionError.apiKeyMissing
         }
 
@@ -145,12 +147,12 @@ class GPT4oTranscribeSpeechProvider: SpeechRecognitionProvider {
         }
 
         guard recorder.record() else {
-            print("[GPT4o-Transcribe] AVAudioRecorder.record() returned false")
+            log.info("AVAudioRecorder.record() returned false", tag: "GPT4o-Transcribe")
             throw SpeechRecognitionError.recognitionFailed(reason: "Failed to start audio recording")
         }
 
         isRecording = true
-        print("[GPT4o-Transcribe] Recording started: \(recordingURL?.lastPathComponent ?? "?")")
+        log.info("Recording started: \(recordingURL?.lastPathComponent ?? "?")", tag: "GPT4o-Transcribe")
     }
 
     func startRecognition(language: String) async throws {
@@ -160,7 +162,7 @@ class GPT4oTranscribeSpeechProvider: SpeechRecognitionProvider {
             try beginCapture(language: language)
         }
 
-        print("[GPT4o-Transcribe] Endpoint: \(endpoint ?? "unknown"), Deployment: \(deployment ?? "unknown")")
+        log.debug("Endpoint: \(endpoint ?? "unknown"), Deployment: \(deployment ?? "unknown")", tag: "GPT4o-Transcribe")
 
         // Notify that recording has started (show a recording indicator)
         let result = SpeechRecognitionResult(
@@ -173,7 +175,7 @@ class GPT4oTranscribeSpeechProvider: SpeechRecognitionProvider {
     }
 
     func stopRecognition() async throws -> String {
-        print("[GPT4o-Transcribe] Stopping recognition...")
+        log.info("Stopping recognition...", tag: "GPT4o-Transcribe")
 
         // Stop recording
         isRecording = false
@@ -181,7 +183,7 @@ class GPT4oTranscribeSpeechProvider: SpeechRecognitionProvider {
         audioRecorder = nil
 
         guard let fileURL = recordingURL else {
-            print("[GPT4o-Transcribe] No recording URL")
+            log.info("No recording URL", tag: "GPT4o-Transcribe")
             prepareNextRecorder()
             return ""
         }
@@ -191,22 +193,22 @@ class GPT4oTranscribeSpeechProvider: SpeechRecognitionProvider {
         do {
             wavData = try Data(contentsOf: fileURL)
         } catch {
-            print("[GPT4o-Transcribe] Failed to read recording file: \(error)")
+            log.info("Failed to read recording file: \(error)", tag: "GPT4o-Transcribe")
             return ""
         }
 
-        print("[GPT4o-Transcribe] WAV data size: \(wavData.count) bytes (\(String(format: "%.1f", Double(wavData.count) / 1024 / 1024)) MB)")
+        log.debug("WAV data size: \(wavData.count) bytes (\(String(format: "%.1f", Double(wavData.count) / 1024 / 1024)) MB)", tag: "GPT4o-Transcribe")
 
         // A valid WAV header is 44 bytes; anything less means no actual audio
         guard wavData.count > 44 else {
-            print("[GPT4o-Transcribe] No audio recorded (file too small)")
+            log.info("No audio recorded (file too small)", tag: "GPT4o-Transcribe")
             try? FileManager.default.removeItem(at: fileURL)
             return ""
         }
 
         // Check file size limit (25 MB)
         guard wavData.count <= 25 * 1024 * 1024 else {
-            print("[GPT4o-Transcribe] Audio too large (>25MB)")
+            log.info("Audio too large (>25MB)", tag: "GPT4o-Transcribe")
             try? FileManager.default.removeItem(at: fileURL)
             throw SpeechRecognitionError.recognitionFailed(reason: "Audio file exceeds 25MB limit. Please record a shorter clip.")
         }
@@ -225,7 +227,7 @@ class GPT4oTranscribeSpeechProvider: SpeechRecognitionProvider {
 
         // Send to GPT-4o Transcribe API
         let transcription = try await transcribeWithGPT4o(audioData: wavData)
-        print("[GPT4o-Transcribe] Transcription: \(transcription)")
+        log.info("Transcription: \(transcription)", tag: "GPT4o-Transcribe")
 
         // Send final result
         let finalResult = SpeechRecognitionResult(
@@ -243,7 +245,7 @@ class GPT4oTranscribeSpeechProvider: SpeechRecognitionProvider {
     }
 
     func cancelRecognition() {
-        print("[GPT4o-Transcribe] Cancelling recognition...")
+        log.info("Cancelling recognition...", tag: "GPT4o-Transcribe")
 
         isRecording = false
         audioRecorder?.stop()
@@ -279,10 +281,10 @@ class GPT4oTranscribeSpeechProvider: SpeechRecognitionProvider {
             try fileManager.createDirectory(at: appSupportDir, withIntermediateDirectories: true)
             let destPath = appSupportDir.appendingPathComponent("\(UUID().uuidString).wav")
             try fileManager.moveItem(at: tempURL, to: destPath)
-            print("[GPT4o-Transcribe] Audio saved to: \(destPath.path)")
+            log.info("Audio saved to: \(destPath.path)", tag: "GPT4o-Transcribe")
             return destPath.path
         } catch {
-            print("[GPT4o-Transcribe] Failed to save audio file: \(error)")
+            log.info("Failed to save audio file: \(error)", tag: "GPT4o-Transcribe")
             return nil
         }
     }
@@ -303,7 +305,7 @@ class GPT4oTranscribeSpeechProvider: SpeechRecognitionProvider {
             throw SpeechRecognitionError.recognitionFailed(reason: "Invalid endpoint URL")
         }
 
-        print("[GPT4o-Transcribe] API URL: \(urlString)")
+        log.debug("API URL: \(urlString)", tag: "GPT4o-Transcribe")
 
         // Build multipart form request
         let boundary = UUID().uuidString
@@ -362,7 +364,7 @@ class GPT4oTranscribeSpeechProvider: SpeechRecognitionProvider {
 
         request.httpBody = body
 
-        print("[GPT4o-Transcribe] Sending \(audioData.count) bytes to API (language: \(lang), temperature: \(temperature), logprobs: \(logprobs))...")
+        log.debug("Sending \(audioData.count) bytes to API (language: \(lang), temperature: \(temperature), logprobs: \(logprobs))...", tag: "GPT4o-Transcribe")
 
         // Send request
         let (data, response) = try await URLSession.shared.data(for: request)
@@ -371,14 +373,14 @@ class GPT4oTranscribeSpeechProvider: SpeechRecognitionProvider {
             throw SpeechRecognitionError.networkError(underlying: URLError(.badServerResponse))
         }
 
-        print("[GPT4o-Transcribe] HTTP status: \(httpResponse.statusCode)")
+        log.info("HTTP status: \(httpResponse.statusCode)", tag: "GPT4o-Transcribe")
 
         guard httpResponse.statusCode == 200 else {
             let errorBody = String(data: data, encoding: .utf8) ?? "Unknown error"
-            print("[GPT4o-Transcribe] API error: \(errorBody)")
+            log.info("API error: \(errorBody)", tag: "GPT4o-Transcribe")
 
             if httpResponse.statusCode == 429 {
-                print("[GPT4o-Transcribe] Rate limit reached (HTTP 429)")
+                log.info("Rate limit reached (HTTP 429)", tag: "GPT4o-Transcribe")
                 throw SpeechRecognitionError.rateLimited
             }
 
@@ -408,7 +410,7 @@ class GPT4oTranscribeSpeechProvider: SpeechRecognitionProvider {
             if !logprobValues.isEmpty {
                 let avgLogprob = logprobValues.reduce(0, +) / Double(logprobValues.count)
                 let avgConfidence = exp(avgLogprob)
-                print("[GPT4o-Transcribe] Average confidence: \(String(format: "%.2f%%", avgConfidence * 100)) (avg logprob: \(String(format: "%.4f", avgLogprob)), \(logprobValues.count) tokens)")
+                log.debug("Average confidence: \(String(format: "%.2f%%", avgConfidence * 100)) (avg logprob: \(String(format: "%.4f", avgLogprob)), \(logprobValues.count) tokens)", tag: "GPT4o-Transcribe")
             }
         }
 

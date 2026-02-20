@@ -39,6 +39,8 @@ class WhisperSpeechProvider: SpeechRecognitionProvider {
 
     // MARK: - Private Properties
 
+    private let log = Logger.shared
+
     private var audioRecorder: AVAudioRecorder?
     private var recordingURL: URL?
     private var isRecording = false
@@ -68,10 +70,10 @@ class WhisperSpeechProvider: SpeechRecognitionProvider {
         self.deployment = deployment ?? UserDefaults.standard.string(forKey: "whisperDeployment")
         self.apiKey = apiKey ?? UserDefaults.standard.string(forKey: "whisperAPIKey")
 
-        print("[Whisper] Initialized")
-        print("[Whisper] Endpoint: \(self.endpoint ?? "not set")")
-        print("[Whisper] Deployment: \(self.deployment ?? "not set")")
-        print("[Whisper] Key configured: \(self.apiKey?.isEmpty == false ? "yes" : "no")")
+        log.info("Initialized", tag: "Whisper")
+        log.debug("Endpoint: \(self.endpoint ?? "not set")", tag: "Whisper")
+        log.debug("Deployment: \(self.deployment ?? "not set")", tag: "Whisper")
+        log.debug("Key configured: \(self.apiKey?.isEmpty == false ? "yes" : "no")", tag: "Whisper")
 
         // Pre-warm the audio hardware so the first recording starts instantly
         prepareNextRecorder()
@@ -83,7 +85,7 @@ class WhisperSpeechProvider: SpeechRecognitionProvider {
         self.endpoint = UserDefaults.standard.string(forKey: "whisperEndpoint")
         self.deployment = UserDefaults.standard.string(forKey: "whisperDeployment")
         self.apiKey = UserDefaults.standard.string(forKey: "whisperAPIKey")
-        print("[Whisper] Config reloaded")
+        log.info("Config reloaded", tag: "Whisper")
     }
 
     // MARK: - Protocol Methods
@@ -99,9 +101,9 @@ class WhisperSpeechProvider: SpeechRecognitionProvider {
             let recorder = try AVAudioRecorder(url: fileURL, settings: recordingSettings)
             recorder.prepareToRecord()
             audioRecorder = recorder
-            print("[Whisper] Recorder prepared: \(fileURL.lastPathComponent)")
+            log.debug("Recorder prepared: \(fileURL.lastPathComponent)", tag: "Whisper")
         } catch {
-            print("[Whisper] ⚠️ Failed to prepare recorder: \(error)")
+            log.info("Failed to prepare recorder: \(error)", tag: "Whisper")
             audioRecorder = nil
         }
     }
@@ -110,7 +112,7 @@ class WhisperSpeechProvider: SpeechRecognitionProvider {
     /// The recorder is already prepared (audio hardware warmed up), so record() is instant.
     func beginCapture(language: String) throws {
         guard isAvailable else {
-            print("[Whisper] Not configured")
+            log.info("Not configured", tag: "Whisper")
             throw SpeechRecognitionError.apiKeyMissing
         }
 
@@ -126,12 +128,12 @@ class WhisperSpeechProvider: SpeechRecognitionProvider {
         }
 
         guard recorder.record() else {
-            print("[Whisper] ❌ AVAudioRecorder.record() returned false")
+            log.info("AVAudioRecorder.record() returned false", tag: "Whisper")
             throw SpeechRecognitionError.recognitionFailed(reason: "Failed to start audio recording")
         }
 
         isRecording = true
-        print("[Whisper] ✅ Recording started: \(recordingURL?.lastPathComponent ?? "?")")
+        log.info("Recording started: \(recordingURL?.lastPathComponent ?? "?")", tag: "Whisper")
     }
 
     func startRecognition(language: String) async throws {
@@ -141,7 +143,7 @@ class WhisperSpeechProvider: SpeechRecognitionProvider {
             try beginCapture(language: language)
         }
 
-        print("[Whisper] Endpoint: \(endpoint ?? "unknown"), Deployment: \(deployment ?? "unknown")")
+        log.debug("Endpoint: \(endpoint ?? "unknown"), Deployment: \(deployment ?? "unknown")", tag: "Whisper")
 
         // Notify that recording has started (show a recording indicator)
         let result = SpeechRecognitionResult(
@@ -154,7 +156,7 @@ class WhisperSpeechProvider: SpeechRecognitionProvider {
     }
 
     func stopRecognition() async throws -> String {
-        print("[Whisper] Stopping recognition...")
+        log.info("Stopping recognition...", tag: "Whisper")
 
         // Stop recording
         isRecording = false
@@ -162,7 +164,7 @@ class WhisperSpeechProvider: SpeechRecognitionProvider {
         audioRecorder = nil
 
         guard let fileURL = recordingURL else {
-            print("[Whisper] No recording URL")
+            log.info("No recording URL", tag: "Whisper")
             prepareNextRecorder()
             return ""
         }
@@ -172,22 +174,22 @@ class WhisperSpeechProvider: SpeechRecognitionProvider {
         do {
             wavData = try Data(contentsOf: fileURL)
         } catch {
-            print("[Whisper] Failed to read recording file: \(error)")
+            log.info("Failed to read recording file: \(error)", tag: "Whisper")
             return ""
         }
 
-        print("[Whisper] WAV data size: \(wavData.count) bytes (\(String(format: "%.1f", Double(wavData.count) / 1024 / 1024)) MB)")
+        log.debug("WAV data size: \(wavData.count) bytes (\(String(format: "%.1f", Double(wavData.count) / 1024 / 1024)) MB)", tag: "Whisper")
 
         // A valid WAV header is 44 bytes; anything less means no actual audio
         guard wavData.count > 44 else {
-            print("[Whisper] No audio recorded (file too small)")
+            log.info("No audio recorded (file too small)", tag: "Whisper")
             try? FileManager.default.removeItem(at: fileURL)
             return ""
         }
 
         // Check file size limit (25 MB)
         guard wavData.count <= 25 * 1024 * 1024 else {
-            print("[Whisper] Audio too large (>25MB)")
+            log.info("Audio too large (>25MB)", tag: "Whisper")
             try? FileManager.default.removeItem(at: fileURL)
             throw SpeechRecognitionError.recognitionFailed(reason: "Audio file exceeds 25MB limit. Please record a shorter clip.")
         }
@@ -206,7 +208,7 @@ class WhisperSpeechProvider: SpeechRecognitionProvider {
 
         // Send to Whisper API
         let transcription = try await transcribeWithWhisper(audioData: wavData)
-        print("[Whisper] Transcription: \(transcription)")
+        log.info("Transcription: \(transcription)", tag: "Whisper")
 
         // Send final result
         let finalResult = SpeechRecognitionResult(
@@ -224,7 +226,7 @@ class WhisperSpeechProvider: SpeechRecognitionProvider {
     }
 
     func cancelRecognition() {
-        print("[Whisper] Cancelling recognition...")
+        log.info("Cancelling recognition...", tag: "Whisper")
 
         isRecording = false
         audioRecorder?.stop()
@@ -260,10 +262,10 @@ class WhisperSpeechProvider: SpeechRecognitionProvider {
             try fileManager.createDirectory(at: appSupportDir, withIntermediateDirectories: true)
             let destPath = appSupportDir.appendingPathComponent("\(UUID().uuidString).wav")
             try fileManager.moveItem(at: tempURL, to: destPath)
-            print("[Whisper] Audio saved to: \(destPath.path)")
+            log.info("Audio saved to: \(destPath.path)", tag: "Whisper")
             return destPath.path
         } catch {
-            print("[Whisper] Failed to save audio file: \(error)")
+            log.info("Failed to save audio file: \(error)", tag: "Whisper")
             return nil
         }
     }
@@ -284,7 +286,7 @@ class WhisperSpeechProvider: SpeechRecognitionProvider {
             throw SpeechRecognitionError.recognitionFailed(reason: "Invalid endpoint URL")
         }
 
-        print("[Whisper] API URL: \(urlString)")
+        log.debug("API URL: \(urlString)", tag: "Whisper")
 
         // Build multipart form request
         let boundary = UUID().uuidString
@@ -321,7 +323,7 @@ class WhisperSpeechProvider: SpeechRecognitionProvider {
 
         request.httpBody = body
 
-        print("[Whisper] Sending \(audioData.count) bytes to API (language: \(whisperLanguage))...")
+        log.debug("Sending \(audioData.count) bytes to API (language: \(whisperLanguage))...", tag: "Whisper")
 
         // Send request
         let (data, response) = try await URLSession.shared.data(for: request)
@@ -330,14 +332,14 @@ class WhisperSpeechProvider: SpeechRecognitionProvider {
             throw SpeechRecognitionError.networkError(underlying: URLError(.badServerResponse))
         }
 
-        print("[Whisper] HTTP status: \(httpResponse.statusCode)")
+        log.info("HTTP status: \(httpResponse.statusCode)", tag: "Whisper")
 
         guard httpResponse.statusCode == 200 else {
             let errorBody = String(data: data, encoding: .utf8) ?? "Unknown error"
-            print("[Whisper] API error: \(errorBody)")
+            log.info("API error: \(errorBody)", tag: "Whisper")
 
             if httpResponse.statusCode == 429 {
-                print("[Whisper] Rate limit reached (HTTP 429)")
+                log.info("Rate limit reached (HTTP 429)", tag: "Whisper")
                 throw SpeechRecognitionError.rateLimited
             }
 

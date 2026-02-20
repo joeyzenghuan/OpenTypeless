@@ -67,13 +67,13 @@ class FloatingPanelController: NSObject, ObservableObject {
     }
 
     /// Show processing state while waiting for model response
-    func showProcessing(originalText: String) {
+    func showProcessing(originalText: String, statusMessage: String = "录音已结束，正在等待模型返回结果...") {
         DispatchQueue.main.async {
             self.transcription = originalText
             self.isRecording = false
             self.isProcessing = true
-            self.statusMessage = "录音已结束，正在等待模型返回结果..."
-            self.log.info("Waiting for AI model response", tag: "FloatingPanel")
+            self.statusMessage = statusMessage
+            self.log.info("Processing: \(statusMessage)", tag: "FloatingPanel")
         }
     }
 

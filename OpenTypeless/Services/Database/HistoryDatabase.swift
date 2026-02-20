@@ -5,6 +5,7 @@ import SQLite3
 class HistoryDatabase {
     static let shared = HistoryDatabase()
 
+    private let log = Logger.shared
     private var db: OpaquePointer?
 
     private init() {
@@ -32,10 +33,10 @@ class HistoryDatabase {
 
         if sqlite3_open(dbPath, &db) != SQLITE_OK {
             let errmsg = db.flatMap { String(cString: sqlite3_errmsg($0)) } ?? "unknown"
-            print("[History] Failed to open database: \(errmsg)")
+            log.info("Failed to open database: \(errmsg)", tag: "History")
             db = nil
         } else {
-            print("[History] Database opened at \(dbPath)")
+            log.info("Database opened at \(dbPath)", tag: "History")
             // Enable WAL mode for better concurrent performance
             execute("PRAGMA journal_mode=WAL;")
         }
@@ -98,7 +99,7 @@ class HistoryDatabase {
         if sqlite3_step(stmt) != SQLITE_DONE {
             logError("insertRecord step")
         } else {
-            print("[History] Record inserted: \(record.id)")
+            log.info("Record inserted: \(record.id)", tag: "History")
         }
     }
 
@@ -173,7 +174,7 @@ class HistoryDatabase {
 
     func clearAll() {
         execute("DELETE FROM transcription_records;")
-        print("[History] All records cleared")
+        log.info("All records cleared", tag: "History")
     }
 
     // MARK: - Count
@@ -206,7 +207,7 @@ class HistoryDatabase {
 
     private func logError(_ context: String) {
         let errmsg = db.flatMap { String(cString: sqlite3_errmsg($0)) } ?? "unknown"
-        print("[History] SQLite error (\(context)): \(errmsg)")
+        log.info("SQLite error (\(context)): \(errmsg)", tag: "History")
     }
 
     private func bindOptionalText(_ stmt: OpaquePointer?, index: Int32, value: String?) {

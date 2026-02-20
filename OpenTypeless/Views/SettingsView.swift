@@ -872,9 +872,10 @@ struct AboutView: View {
         VStack(spacing: 20) {
             Spacer()
 
-            Image(systemName: "mic.fill")
-                .font(.system(size: 60))
-                .foregroundColor(.blue)
+            Image("MenuBarIcon")
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 60, height: 60)
 
             Text("OpenTypeless")
                 .font(.largeTitle)
@@ -889,6 +890,11 @@ struct AboutView: View {
             Link("GitHub", destination: URL(string: "https://github.com/joeyzenghuan/OpenTypeless")!)
 
             Spacer()
+
+            Button("退出 OpenTypeless") {
+                NSApplication.shared.terminate(nil)
+            }
+            .foregroundColor(.red)
 
             Text("Made with ❤️")
                 .font(.caption)

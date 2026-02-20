@@ -14,8 +14,10 @@ struct MenuBarView: View {
         VStack(spacing: 0) {
             // Header
             HStack {
-                Image(systemName: "mic.fill")
-                    .foregroundColor(.blue)
+                Image("MenuBarIcon")
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 20, height: 20)
                 Text("OpenTypeless")
                     .font(.headline)
                 Spacer()
@@ -105,9 +107,10 @@ struct HomeTabView: View {
         VStack(spacing: 20) {
             Spacer()
 
-            Image(systemName: "mic.circle.fill")
-                .font(.system(size: 60))
-                .foregroundColor(.blue)
+            Image("MenuBarIcon")
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 60, height: 60)
 
             Text("按住 fn 键开始说话")
                 .font(.headline)
@@ -319,7 +322,7 @@ class AudioPlayerManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
 
         let url = URL(fileURLWithPath: filePath)
         guard FileManager.default.fileExists(atPath: filePath) else {
-            print("[AudioPlayer] File not found: \(filePath)")
+            Logger.shared.info("File not found: \(filePath)", tag: "AudioPlayer")
             return
         }
 
@@ -329,7 +332,7 @@ class AudioPlayerManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
             audioPlayer?.play()
             playingRecordId = recordId
         } catch {
-            print("[AudioPlayer] Failed to play: \(error)")
+            Logger.shared.info("Failed to play: \(error)", tag: "AudioPlayer")
         }
     }
 

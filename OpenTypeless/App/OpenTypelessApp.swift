@@ -382,6 +382,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             }
 
             do {
+                // For non-realtime providers (GPT-4o Transcribe, Whisper), show processing
+                // state immediately since stopRecognition() sends audio to API and waits
+                let isRealtimeProvider = self.speechProvider?.supportsRealtime ?? true
+                if !isRealtimeProvider {
+                    self.floatingPanel.showProcessing(originalText: self.floatingPanel.transcription.isEmpty ? "正在处理音频..." : self.floatingPanel.transcription)
+                }
+
                 let sttStartTime = Date()
                 var result = try await self.speechProvider?.stopRecognition() ?? ""
                 let sttEndTime = Date()
@@ -409,7 +416,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
                 if aiEnabled {
                     self.log.info("AI polish enabled, processing...", tag: "App")
-                    self.floatingPanel.showProcessing(originalText: result)
+                    self.floatingPanel.showProcessing(originalText: result, statusMessage: "正在 AI 润色...")
 
                     // Reload AI provider config
                     self.aiProvider?.reloadConfig()
