@@ -9,17 +9,23 @@ class FloatingPanelController: NSObject, ObservableObject {
     @Published var isVisible: Bool = false
     @Published var transcription: String = ""
     @Published var isRecording: Bool = false
+    @Published var isProcessing: Bool = false
     @Published var statusMessage: String = "准备就绪"
     @Published var providerName: String = ""
     @Published var fallbackWarning: String? = nil
 
+    /// Called when the user taps the close/cancel button
+    var onCancel: (() -> Void)?
+
+    private let log = Logger.shared
+
     override init() {
         super.init()
-        print("[FloatingPanel] Initialized")
+        log.debug("Initialized", tag: "FloatingPanel")
     }
 
     func showPanel() {
-        print("[FloatingPanel] Showing panel...")
+        log.debug("Showing panel...", tag: "FloatingPanel")
 
         DispatchQueue.main.async {
             if self.panel == nil {
@@ -28,6 +34,7 @@ class FloatingPanelController: NSObject, ObservableObject {
 
             self.isVisible = true
             self.isRecording = true
+            self.isProcessing = false
             self.statusMessage = "正在录音..."
             self.transcription = ""
             // fallbackWarning is preserved across sessions; set by AppDelegate
@@ -35,18 +42,19 @@ class FloatingPanelController: NSObject, ObservableObject {
             self.panel?.orderFront(nil)
             self.panel?.makeKey()
 
-            print("[FloatingPanel] ✅ Panel is now visible")
+            self.log.debug("Panel is now visible", tag: "FloatingPanel")
         }
     }
 
     func hidePanel() {
-        print("[FloatingPanel] Hiding panel...")
+        log.debug("Hiding panel...", tag: "FloatingPanel")
 
         DispatchQueue.main.async {
             self.isVisible = false
             self.isRecording = false
+            self.isProcessing = false
             self.panel?.orderOut(nil)
-            print("[FloatingPanel] ✅ Panel hidden")
+            self.log.debug("Panel hidden", tag: "FloatingPanel")
         }
     }
 
@@ -54,7 +62,18 @@ class FloatingPanelController: NSObject, ObservableObject {
         DispatchQueue.main.async {
             self.transcription = text
             self.statusMessage = text.isEmpty ? "正在听..." : "识别中..."
-            print("[FloatingPanel] Transcription updated: \(text)")
+            self.log.debug("Transcription updated: \(text)", tag: "FloatingPanel")
+        }
+    }
+
+    /// Show processing state while waiting for model response
+    func showProcessing(originalText: String) {
+        DispatchQueue.main.async {
+            self.transcription = originalText
+            self.isRecording = false
+            self.isProcessing = true
+            self.statusMessage = "录音已结束，正在等待模型返回结果..."
+            self.log.info("Waiting for AI model response", tag: "FloatingPanel")
         }
     }
 
@@ -63,6 +82,7 @@ class FloatingPanelController: NSObject, ObservableObject {
             self.transcription = text
             self.statusMessage = "完成"
             self.isRecording = false
+            self.isProcessing = false
 
             // Auto-hide after a delay
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
@@ -75,6 +95,7 @@ class FloatingPanelController: NSObject, ObservableObject {
         DispatchQueue.main.async {
             self.statusMessage = "错误: \(message)"
             self.isRecording = false
+            self.isProcessing = false
 
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
                 self.hidePanel()
@@ -82,8 +103,14 @@ class FloatingPanelController: NSObject, ObservableObject {
         }
     }
 
+    /// Called when user clicks the close button
+    func cancelByUser() {
+        log.info("User requested cancel", tag: "FloatingPanel")
+        onCancel?()
+    }
+
     private func createPanel() {
-        print("[FloatingPanel] Creating panel window...")
+        log.debug("Creating panel window...", tag: "FloatingPanel")
 
         let contentView = FloatingTranscriptView()
             .environmentObject(self)
@@ -119,7 +146,7 @@ class FloatingPanelController: NSObject, ObservableObject {
         }
 
         self.panel = panel
-        print("[FloatingPanel] ✅ Panel created")
+        log.debug("Panel created", tag: "FloatingPanel")
     }
 }
 
@@ -128,7 +155,7 @@ struct FloatingTranscriptView: View {
 
     var body: some View {
         VStack(spacing: 12) {
-            // Recording indicator
+            // Top bar: status indicator + close button
             HStack(spacing: 10) {
                 // Westie dog icon (left side)
                 Image("MenuBarIcon")
@@ -136,7 +163,7 @@ struct FloatingTranscriptView: View {
                     .resizable()
                     .aspectRatio(contentMode: .fit)
                     .frame(width: 28, height: 28)
-                    .foregroundColor(controller.isRecording ? .red : .white)
+                    .foregroundColor(controller.isRecording ? .red : (controller.isProcessing ? .orange : .white))
 
                 if controller.isRecording {
                     Circle()
@@ -153,6 +180,15 @@ struct FloatingTranscriptView: View {
                     Text(controller.statusMessage)
                         .font(.headline)
                         .foregroundColor(.white)
+                } else if controller.isProcessing {
+                    // Processing indicator - spinning
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle(tint: .orange))
+                        .scaleEffect(0.8)
+
+                    Text(controller.statusMessage)
+                        .font(.headline)
+                        .foregroundColor(.orange)
                 } else {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundColor(.green)
@@ -173,6 +209,17 @@ struct FloatingTranscriptView: View {
                         .background(Color.white.opacity(0.15))
                         .cornerRadius(4)
                 }
+
+                // Close button
+                Button(action: {
+                    controller.cancelByUser()
+                }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 18))
+                        .foregroundColor(.white.opacity(0.6))
+                }
+                .buttonStyle(.plain)
+                .help("关闭并取消")
             }
 
             // Fallback warning

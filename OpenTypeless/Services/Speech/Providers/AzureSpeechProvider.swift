@@ -43,6 +43,8 @@ class AzureSpeechProvider: SpeechRecognitionProvider {
     private var allTranscriptions: [String] = []
     private var isRecognizing: Bool = false
 
+    private let log = Logger.shared
+
     #if canImport(MicrosoftCognitiveServicesSpeech)
     private var speechRecognizer: SPXSpeechRecognizer?
     #endif
@@ -53,9 +55,7 @@ class AzureSpeechProvider: SpeechRecognitionProvider {
         self.subscriptionKey = subscriptionKey ?? UserDefaults.standard.string(forKey: "azureSpeechKey")
         self.region = region ?? UserDefaults.standard.string(forKey: "azureSpeechRegion")
 
-        print("[AzureSpeech] Initialized")
-        print("[AzureSpeech] Region: \(self.region ?? "not set")")
-        print("[AzureSpeech] Key configured: \(self.subscriptionKey?.isEmpty == false ? "yes" : "no")")
+        log.info("Initialized - region: \(self.region ?? "not set"), key configured: \(self.subscriptionKey?.isEmpty == false ? "yes" : "no")", tag: "AzureSpeech")
     }
 
     // MARK: - Configuration
@@ -68,35 +68,29 @@ class AzureSpeechProvider: SpeechRecognitionProvider {
     func reloadConfig() {
         self.subscriptionKey = UserDefaults.standard.string(forKey: "azureSpeechKey")
         self.region = UserDefaults.standard.string(forKey: "azureSpeechRegion")
-        print("[AzureSpeech] Config reloaded")
+        log.info("Config reloaded", tag: "AzureSpeech")
     }
 
     // MARK: - Protocol Methods
 
     func startRecognition(language: String) async throws {
-        print("[AzureSpeech] ========================================")
-        print("[AzureSpeech] Starting recognition")
-        print("[AzureSpeech] Provider: Azure Speech Service (cloud)")
-        print("[AzureSpeech] Language: \(language)")
-        print("[AzureSpeech] Region: \(region ?? "unknown")")
-        print("[AzureSpeech] ========================================")
+        log.info("Starting recognition - language: \(language), region: \(region ?? "unknown")", tag: "AzureSpeech")
 
         guard isAvailable else {
-            print("[AzureSpeech] ❌ Not configured")
+            log.info("Not configured", tag: "AzureSpeech")
             throw SpeechRecognitionError.apiKeyMissing
         }
 
         #if canImport(MicrosoftCognitiveServicesSpeech)
         try await startAzureRecognition(language: language)
         #else
-        print("[AzureSpeech] ❌ Azure Speech SDK not available")
-        print("[AzureSpeech] Please run 'pod install' and open .xcworkspace")
+        log.info("Azure Speech SDK not available - run 'pod install' and open .xcworkspace", tag: "AzureSpeech")
         throw SpeechRecognitionError.notAvailable
         #endif
     }
 
     func stopRecognition() async throws -> String {
-        print("[AzureSpeech] Stopping recognition...")
+        log.info("Stopping recognition...", tag: "AzureSpeech")
 
         #if canImport(MicrosoftCognitiveServicesSpeech)
         return try await stopAzureRecognition()
@@ -106,7 +100,7 @@ class AzureSpeechProvider: SpeechRecognitionProvider {
     }
 
     func cancelRecognition() {
-        print("[AzureSpeech] Cancelling recognition...")
+        log.info("Cancelling recognition...", tag: "AzureSpeech")
 
         #if canImport(MicrosoftCognitiveServicesSpeech)
         cancelAzureRecognition()
@@ -139,23 +133,23 @@ class AzureSpeechProvider: SpeechRecognitionProvider {
         do {
             speechConfig = try SPXSpeechConfiguration(subscription: key, region: reg)
         } catch {
-            print("[AzureSpeech] ❌ Failed to create speech config: \(error)")
+            log.info("Failed to create speech config: \(error)", tag: "AzureSpeech")
             throw SpeechRecognitionError.recognitionFailed(reason: error.localizedDescription)
         }
 
         // Set recognition language
         speechConfig.speechRecognitionLanguage = language
-        print("[AzureSpeech] Speech config created with language: \(language)")
+        log.debug("Speech config created with language: \(language)", tag: "AzureSpeech")
 
         // Create audio configuration (from default microphone)
         let audioConfig = SPXAudioConfiguration()
-        print("[AzureSpeech] Audio config created (default microphone)")
+        log.debug("Audio config created (default microphone)", tag: "AzureSpeech")
 
         // Create speech recognizer
         do {
             speechRecognizer = try SPXSpeechRecognizer(speechConfiguration: speechConfig, audioConfiguration: audioConfig)
         } catch {
-            print("[AzureSpeech] ❌ Failed to create recognizer: \(error)")
+            log.info("Failed to create recognizer: \(error)", tag: "AzureSpeech")
             throw SpeechRecognitionError.recognitionFailed(reason: error.localizedDescription)
         }
 
@@ -172,7 +166,7 @@ class AzureSpeechProvider: SpeechRecognitionProvider {
         recognizer.addRecognizingEventHandler { [weak self] _, evt in
             guard let self = self else { return }
             let text = evt.result.text ?? ""
-            print("[AzureSpeech] Recognizing: \(text)")
+            self.log.debug("Recognizing: \(text)", tag: "AzureSpeech")
 
             // Update transcription
             let previousText = self.allTranscriptions.joined(separator: "")
@@ -194,7 +188,7 @@ class AzureSpeechProvider: SpeechRecognitionProvider {
             let text = evt.result.text ?? ""
 
             if !text.isEmpty {
-                print("[AzureSpeech] Recognized: \(text)")
+                self.log.debug("Recognized: \(text)", tag: "AzureSpeech")
                 self.allTranscriptions.append(text)
                 self.finalTranscription = self.allTranscriptions.joined(separator: "")
 
@@ -211,22 +205,22 @@ class AzureSpeechProvider: SpeechRecognitionProvider {
         // Add canceled event handler
         recognizer.addCanceledEventHandler { [weak self] _, evt in
             guard let self = self else { return }
-            print("[AzureSpeech] Canceled: \(evt.reason.rawValue)")
+            self.log.info("Canceled: \(evt.reason.rawValue)", tag: "AzureSpeech")
 
             if evt.reason == SPXCancellationReason.error {
                 let errorDetails = evt.errorDetails ?? "Unknown error"
-                print("[AzureSpeech] ❌ Error: \(errorDetails)")
+                self.log.info("Error: \(errorDetails)", tag: "AzureSpeech")
                 self.errorHandler?(SpeechRecognitionError.recognitionFailed(reason: errorDetails))
             }
         }
 
         // Start continuous recognition
-        print("[AzureSpeech] Starting continuous recognition...")
+        log.info("Starting continuous recognition...", tag: "AzureSpeech")
         do {
             try recognizer.startContinuousRecognition()
-            print("[AzureSpeech] ✅ Continuous recognition started")
+            log.info("Continuous recognition started", tag: "AzureSpeech")
         } catch {
-            print("[AzureSpeech] ❌ Failed to start recognition: \(error)")
+            log.info("Failed to start recognition: \(error)", tag: "AzureSpeech")
             throw SpeechRecognitionError.recognitionFailed(reason: error.localizedDescription)
         }
     }
@@ -239,9 +233,9 @@ class AzureSpeechProvider: SpeechRecognitionProvider {
         // Stop continuous recognition
         do {
             try recognizer.stopContinuousRecognition()
-            print("[AzureSpeech] ✅ Continuous recognition stopped")
+            log.info("Continuous recognition stopped", tag: "AzureSpeech")
         } catch {
-            print("[AzureSpeech] ❌ Failed to stop recognition: \(error)")
+            log.info("Failed to stop recognition: \(error)", tag: "AzureSpeech")
         }
 
         // Wait a moment for final results
@@ -250,8 +244,8 @@ class AzureSpeechProvider: SpeechRecognitionProvider {
         isRecognizing = false
         speechRecognizer = nil
 
-        print("[AzureSpeech] All segments: \(allTranscriptions)")
-        print("[AzureSpeech] Final combined: \(finalTranscription)")
+        log.debug("All segments: \(allTranscriptions)", tag: "AzureSpeech")
+        log.info("Final combined: \(finalTranscription)", tag: "AzureSpeech")
 
         return finalTranscription
     }
@@ -262,7 +256,7 @@ class AzureSpeechProvider: SpeechRecognitionProvider {
         do {
             try recognizer.stopContinuousRecognition()
         } catch {
-            print("[AzureSpeech] Error stopping recognition: \(error)")
+            log.info("Error stopping recognition: \(error)", tag: "AzureSpeech")
         }
 
         isRecognizing = false

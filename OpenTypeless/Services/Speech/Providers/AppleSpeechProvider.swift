@@ -31,6 +31,8 @@ class AppleSpeechProvider: SpeechRecognitionProvider {
     private var lastPartialResult: String = "" // Track last partial to detect resets
     private var gotFinalResult = false // Signal that recognition produced a final result
 
+    private let log = Logger.shared
+
     // MARK: - Initialization
 
     init() {
@@ -40,16 +42,16 @@ class AppleSpeechProvider: SpeechRecognitionProvider {
     // MARK: - Authorization
 
     private func requestAuthorization() {
-        SFSpeechRecognizer.requestAuthorization { status in
+        SFSpeechRecognizer.requestAuthorization { [weak self] status in
             switch status {
             case .authorized:
-                print("Apple Speech: Authorized")
+                self?.log.info("Authorization: authorized", tag: "AppleSpeech")
             case .denied:
-                print("Apple Speech: Denied")
+                self?.log.info("Authorization: denied", tag: "AppleSpeech")
             case .restricted:
-                print("Apple Speech: Restricted")
+                self?.log.info("Authorization: restricted", tag: "AppleSpeech")
             case .notDetermined:
-                print("Apple Speech: Not Determined")
+                self?.log.info("Authorization: not determined", tag: "AppleSpeech")
             @unknown default:
                 break
             }
@@ -59,11 +61,7 @@ class AppleSpeechProvider: SpeechRecognitionProvider {
     // MARK: - Protocol Methods
 
     func startRecognition(language: String) async throws {
-        print("[AppleSpeech] ========================================")
-        print("[AppleSpeech] Starting recognition")
-        print("[AppleSpeech] Provider: Apple Speech Framework (on-device)")
-        print("[AppleSpeech] Language: \(language)")
-        print("[AppleSpeech] ========================================")
+        log.info("Starting recognition - language: \(language)", tag: "AppleSpeech")
 
         // Check authorization
         guard SFSpeechRecognizer.authorizationStatus() == .authorized else {
@@ -79,7 +77,7 @@ class AppleSpeechProvider: SpeechRecognitionProvider {
             throw SpeechRecognitionError.notAvailable
         }
 
-        print("[AppleSpeech] On-device recognition: \(recognizer.supportsOnDeviceRecognition ? "supported" : "not supported")")
+        log.debug("On-device recognition: \(recognizer.supportsOnDeviceRecognition ? "supported" : "not supported")", tag: "AppleSpeech")
         speechRecognizer = recognizer
 
         // Setup audio engine
@@ -129,7 +127,7 @@ class AppleSpeechProvider: SpeechRecognitionProvider {
                 let nsError = error as NSError
                 if nsError.domain == "kAFAssistantErrorDomain" && nsError.code == 1110 {
                     // Recognition was cancelled, not an error
-                    print("[AppleSpeech] Recognition cancelled (expected)")
+                    self.log.debug("Recognition cancelled (expected)", tag: "AppleSpeech")
                     return
                 }
                 self.errorHandler?(error)
@@ -140,12 +138,10 @@ class AppleSpeechProvider: SpeechRecognitionProvider {
                 let transcription = result.bestTranscription.formattedString
 
                 // Detect if recognition was reset (new result is much shorter than last)
-                // This happens when Apple Speech starts a new "segment"
                 if !self.lastPartialResult.isEmpty &&
                    transcription.count < self.lastPartialResult.count / 2 &&
                    self.lastPartialResult.count > 3 {
-                    // Save the previous segment before it gets lost
-                    print("[AppleSpeech] Detected reset, saving segment: \(self.lastPartialResult)")
+                    self.log.debug("Detected reset, saving segment: \(self.lastPartialResult)", tag: "AppleSpeech")
                     self.allTranscriptions.append(self.lastPartialResult)
                 }
 
@@ -155,7 +151,7 @@ class AppleSpeechProvider: SpeechRecognitionProvider {
                 if result.isFinal {
                     if !transcription.isEmpty && !self.allTranscriptions.contains(transcription) {
                         self.allTranscriptions.append(transcription)
-                        print("[AppleSpeech] Final segment: \(transcription)")
+                        self.log.debug("Final segment: \(transcription)", tag: "AppleSpeech")
                     }
                     self.gotFinalResult = true
                 }
@@ -175,6 +171,8 @@ class AppleSpeechProvider: SpeechRecognitionProvider {
                 self.partialResultHandler?(speechResult)
             }
         }
+
+        log.info("Recognition started", tag: "AppleSpeech")
     }
 
     func stopRecognition() async throws -> String {
@@ -204,14 +202,14 @@ class AppleSpeechProvider: SpeechRecognitionProvider {
 
         // Save any remaining partial result
         if !lastPartialResult.isEmpty && !allTranscriptions.contains(lastPartialResult) {
-            print("[AppleSpeech] Saving last partial: \(lastPartialResult)")
+            log.debug("Saving last partial: \(lastPartialResult)", tag: "AppleSpeech")
             allTranscriptions.append(lastPartialResult)
         }
 
         // Build final result
         finalTranscription = allTranscriptions.joined(separator: "")
-        print("[AppleSpeech] All segments: \(allTranscriptions)")
-        print("[AppleSpeech] Final combined: \(finalTranscription)")
+        log.debug("All segments: \(allTranscriptions)", tag: "AppleSpeech")
+        log.info("Final combined: \(finalTranscription)", tag: "AppleSpeech")
 
         // Cancel task
         recognitionTask?.cancel()

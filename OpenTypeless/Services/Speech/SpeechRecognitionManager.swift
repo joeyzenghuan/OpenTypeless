@@ -17,6 +17,7 @@ class SpeechRecognitionManager: ObservableObject {
 
     private var providers: [String: SpeechRecognitionProvider] = [:]
     private var config: SpeechProviderConfig = SpeechProviderConfig()
+    private let log = Logger.shared
 
     // MARK: - Initialization
 
@@ -56,7 +57,7 @@ class SpeechRecognitionManager: ObservableObject {
     /// - Parameter identifier: Provider identifier (e.g., "apple", "azure")
     func selectProvider(identifier: String) {
         guard let provider = providers[identifier] else {
-            print("Provider \(identifier) not found, falling back to Apple Speech")
+            log.info("Provider \(identifier) not found, falling back to Apple Speech", tag: "SpeechManager")
             currentProvider = providers["apple"]
             return
         }
@@ -65,7 +66,7 @@ class SpeechRecognitionManager: ObservableObject {
             currentProvider = provider
             setupProviderCallbacks()
         } else {
-            print("Provider \(identifier) is not available")
+            log.info("Provider \(identifier) is not available", tag: "SpeechManager")
             error = SpeechRecognitionError.notAvailable
         }
     }

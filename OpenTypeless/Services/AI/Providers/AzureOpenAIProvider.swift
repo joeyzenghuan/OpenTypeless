@@ -33,6 +33,8 @@ class AzureOpenAIProvider: AIProvider {
     private var apiVersion: String
     private var apiType: AzureOpenAIAPIType
 
+    private let log = Logger.shared
+
     // MARK: - Initialization
 
     init() {
@@ -43,7 +45,7 @@ class AzureOpenAIProvider: AIProvider {
         self.apiVersion = defaults.string(forKey: "azureOpenAIVersion") ?? "2024-02-15-preview"
         self.apiType = AzureOpenAIAPIType(rawValue: defaults.string(forKey: "azureOpenAIAPIType") ?? "chat-completions") ?? .chatCompletions
 
-        print("[AzureOpenAI] Initialized - endpoint: \(endpoint.isEmpty ? "not set" : "configured"), API type: \(apiType.displayName)")
+        log.info("Initialized - endpoint: \(endpoint.isEmpty ? "not set" : "configured"), API type: \(apiType.displayName)", tag: "AzureOpenAI")
     }
 
     func reloadConfig() {
@@ -53,7 +55,13 @@ class AzureOpenAIProvider: AIProvider {
         self.apiKey = defaults.string(forKey: "azureOpenAIKey") ?? ""
         self.apiVersion = defaults.string(forKey: "azureOpenAIVersion") ?? "2024-02-15-preview"
         self.apiType = AzureOpenAIAPIType(rawValue: defaults.string(forKey: "azureOpenAIAPIType") ?? "chat-completions") ?? .chatCompletions
-        print("[AzureOpenAI] Config reloaded - API type: \(apiType.displayName)")
+        log.info("Config reloaded - API type: \(apiType.displayName)", tag: "AzureOpenAI")
+    }
+
+    /// Read timeout from user settings (default 10s)
+    private var timeout: TimeInterval {
+        let value = UserDefaults.standard.double(forKey: "apiTimeout")
+        return value > 0 ? value : 10.0
     }
 
     // MARK: - AI Processing
@@ -65,13 +73,13 @@ class AzureOpenAIProvider: AIProvider {
 
     func polishWithMetadata(text: String, systemPrompt: String) async throws -> AIPolishResult {
         guard isAvailable else {
-            print("[AzureOpenAI] ❌ Not configured")
+            log.info("Not configured", tag: "AzureOpenAI")
             throw AIProviderError.notConfigured
         }
 
-        print("[AzureOpenAI] Polishing text: \(text)")
-        print("[AzureOpenAI] System prompt: \(systemPrompt)")
-        print("[AzureOpenAI] Using API type: \(apiType.displayName)")
+        log.info("Polishing text (\(text.count) chars), API type: \(apiType.displayName)", tag: "AzureOpenAI")
+        log.debug("Input text: \(text)", tag: "AzureOpenAI")
+        log.debug("System prompt: \(systemPrompt)", tag: "AzureOpenAI")
 
         let startTime = Date()
         let polishedText: String
@@ -83,7 +91,7 @@ class AzureOpenAIProvider: AIProvider {
         }
         let durationMs = Int(Date().timeIntervalSince(startTime) * 1000)
 
-        print("[AzureOpenAI] Polish took \(durationMs)ms")
+        log.info("Polish took \(durationMs)ms", tag: "AzureOpenAI")
         return AIPolishResult(text: polishedText, modelName: deploymentName, durationMs: durationMs)
     }
 
@@ -91,14 +99,13 @@ class AzureOpenAIProvider: AIProvider {
 
     private func polishWithChatCompletions(text: String, systemPrompt: String) async throws -> String {
         // Build URL
-        // Format: {endpoint}/openai/deployments/{deployment-id}/chat/completions?api-version={api-version}
         let urlString = "\(endpoint)/openai/deployments/\(deploymentName)/chat/completions?api-version=\(apiVersion)"
 
         guard let url = URL(string: urlString) else {
             throw AIProviderError.apiError(message: "Invalid endpoint URL")
         }
 
-        print("[AzureOpenAI] Chat Completions URL: \(urlString)")
+        log.debug("Chat Completions URL: \(urlString)", tag: "AzureOpenAI")
 
         // Build request body
         let requestBody: [String: Any] = [
@@ -112,13 +119,9 @@ class AzureOpenAIProvider: AIProvider {
 
         let jsonData = try JSONSerialization.data(withJSONObject: requestBody, options: .prettyPrinted)
 
-        // Print full request body
-        print("[AzureOpenAI] ========================================")
-        print("[AzureOpenAI] REQUEST BODY (Chat Completions):")
         if let jsonStr = String(data: jsonData, encoding: .utf8) {
-            print(jsonStr)
+            log.debug("REQUEST BODY (Chat Completions):\n\(jsonStr)", tag: "AzureOpenAI")
         }
-        print("[AzureOpenAI] ========================================")
 
         // Create request
         var request = URLRequest(url: url)
@@ -126,10 +129,10 @@ class AzureOpenAIProvider: AIProvider {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue(apiKey, forHTTPHeaderField: "api-key")
         request.httpBody = jsonData
-        request.timeoutInterval = 30
+        request.timeoutInterval = timeout
 
         // Send request
-        print("[AzureOpenAI] Sending Chat Completions request...")
+        log.info("Sending Chat Completions request (timeout: \(timeout)s)...", tag: "AzureOpenAI")
         let (data, response) = try await URLSession.shared.data(for: request)
 
         // Check response
@@ -137,11 +140,11 @@ class AzureOpenAIProvider: AIProvider {
             throw AIProviderError.invalidResponse
         }
 
-        print("[AzureOpenAI] Response status: \(httpResponse.statusCode)")
+        log.info("Response status: \(httpResponse.statusCode)", tag: "AzureOpenAI")
 
         if httpResponse.statusCode != 200 {
             let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
-            print("[AzureOpenAI] ❌ Error response: \(errorMessage)")
+            log.info("Error response: \(errorMessage)", tag: "AzureOpenAI")
             throw AIProviderError.apiError(message: "HTTP \(httpResponse.statusCode): \(errorMessage)")
         }
 
@@ -151,15 +154,15 @@ class AzureOpenAIProvider: AIProvider {
               let firstChoice = choices.first,
               let message = firstChoice["message"] as? [String: Any],
               let content = message["content"] as? String else {
-            print("[AzureOpenAI] ❌ Failed to parse response")
+            log.info("Failed to parse response", tag: "AzureOpenAI")
             if let responseStr = String(data: data, encoding: .utf8) {
-                print("[AzureOpenAI] Raw response: \(responseStr)")
+                log.debug("Raw response: \(responseStr)", tag: "AzureOpenAI")
             }
             throw AIProviderError.invalidResponse
         }
 
         let polishedText = content.trimmingCharacters(in: .whitespacesAndNewlines)
-        print("[AzureOpenAI] ✅ Chat Completions result: \(polishedText)")
+        log.info("Chat Completions result: \(polishedText)", tag: "AzureOpenAI")
 
         return polishedText
     }
@@ -168,17 +171,15 @@ class AzureOpenAIProvider: AIProvider {
 
     private func polishWithResponsesAPI(text: String, systemPrompt: String) async throws -> String {
         // Build URL for Responses API
-        // Format: {endpoint}/openai/v1/responses (no api-version needed)
         let urlString = "\(endpoint)/openai/v1/responses"
 
         guard let url = URL(string: urlString) else {
             throw AIProviderError.apiError(message: "Invalid endpoint URL")
         }
 
-        print("[AzureOpenAI] Responses API URL: \(urlString)")
+        log.debug("Responses API URL: \(urlString)", tag: "AzureOpenAI")
 
-        // Build request body - simple format
-        // Combine system prompt and user input into a single string
+        // Build request body
         let combinedInput = "\(systemPrompt)\n\n请润色以下文字：\n\(text)"
 
         let requestBody: [String: Any] = [
@@ -188,13 +189,9 @@ class AzureOpenAIProvider: AIProvider {
 
         let jsonData = try JSONSerialization.data(withJSONObject: requestBody, options: .prettyPrinted)
 
-        // Print full request body
-        print("[AzureOpenAI] ========================================")
-        print("[AzureOpenAI] REQUEST BODY (Responses API):")
         if let jsonStr = String(data: jsonData, encoding: .utf8) {
-            print(jsonStr)
+            log.debug("REQUEST BODY (Responses API):\n\(jsonStr)", tag: "AzureOpenAI")
         }
-        print("[AzureOpenAI] ========================================")
 
         // Create request
         var request = URLRequest(url: url)
@@ -202,10 +199,10 @@ class AzureOpenAIProvider: AIProvider {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue(apiKey, forHTTPHeaderField: "api-key")
         request.httpBody = jsonData
-        request.timeoutInterval = 60
+        request.timeoutInterval = timeout
 
         // Send request
-        print("[AzureOpenAI] Sending Responses API request...")
+        log.info("Sending Responses API request (timeout: \(timeout)s)...", tag: "AzureOpenAI")
         let (data, response) = try await URLSession.shared.data(for: request)
 
         // Check response
@@ -213,35 +210,34 @@ class AzureOpenAIProvider: AIProvider {
             throw AIProviderError.invalidResponse
         }
 
-        print("[AzureOpenAI] Response status: \(httpResponse.statusCode)")
+        log.info("Response status: \(httpResponse.statusCode)", tag: "AzureOpenAI")
 
-        // Debug: print raw response
+        // Debug: log raw response
         if let responseStr = String(data: data, encoding: .utf8) {
-            print("[AzureOpenAI] Raw response: \(responseStr)")
+            log.debug("Raw response: \(responseStr)", tag: "AzureOpenAI")
         }
 
         if httpResponse.statusCode != 200 {
             let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
-            print("[AzureOpenAI] ❌ Error response: \(errorMessage)")
+            log.info("Error response: \(errorMessage)", tag: "AzureOpenAI")
             throw AIProviderError.apiError(message: "HTTP \(httpResponse.statusCode): \(errorMessage)")
         }
 
         // Parse Responses API response
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            print("[AzureOpenAI] ❌ Failed to parse JSON response")
+            log.info("Failed to parse JSON response", tag: "AzureOpenAI")
             throw AIProviderError.invalidResponse
         }
 
         // Check status
         if let status = json["status"] as? String, status != "completed" {
-            print("[AzureOpenAI] ⚠️ Response status: \(status)")
+            log.info("Response status: \(status)", tag: "AzureOpenAI")
             if status == "failed" {
                 throw AIProviderError.apiError(message: "Response generation failed")
             }
         }
 
-        // Extract output text
-        // Try different response formats
+        // Extract output text - try different response formats
         var outputText: String?
 
         // Format 1: output[].content[].text
@@ -268,13 +264,13 @@ class AzureOpenAIProvider: AIProvider {
         }
 
         guard let finalText = outputText else {
-            print("[AzureOpenAI] ❌ Failed to extract text from response")
-            print("[AzureOpenAI] Response structure: \(json)")
+            log.info("Failed to extract text from response", tag: "AzureOpenAI")
+            log.debug("Response structure: \(json)", tag: "AzureOpenAI")
             throw AIProviderError.invalidResponse
         }
 
         let polishedText = finalText.trimmingCharacters(in: .whitespacesAndNewlines)
-        print("[AzureOpenAI] ✅ Responses API result: \(polishedText)")
+        log.info("Responses API result: \(polishedText)", tag: "AzureOpenAI")
 
         return polishedText
     }

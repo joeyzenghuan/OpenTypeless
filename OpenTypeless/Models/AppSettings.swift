@@ -43,6 +43,14 @@ class AppSettings: ObservableObject {
     @AppStorage("ollamaEndpoint") var ollamaEndpoint: String = "http://localhost:11434"
     @AppStorage("ollamaModel") var ollamaModel: String = "llama3"
 
+    // MARK: - API Settings
+
+    @AppStorage("apiTimeout") var apiTimeout: Double = 10.0 // seconds
+
+    // MARK: - Logging
+
+    @AppStorage("logLevel") var logLevel: String = "off" // off, info, debug
+
     // MARK: - Shortcuts
     // Stored as JSON strings representing KeyCombination objects.
     // Legacy string values (e.g., "fn", "fn+space") are migrated on first access.
@@ -129,6 +137,9 @@ class AppSettings: ObservableObject {
         claudeAPIKey = ""
         ollamaEndpoint = "http://localhost:11434"
         ollamaModel = "llama3"
+
+        apiTimeout = 10.0
+        logLevel = "off"
 
         shortcutVoiceInput = ""
         shortcutHandsFree = ""

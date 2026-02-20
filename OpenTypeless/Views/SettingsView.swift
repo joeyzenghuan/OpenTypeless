@@ -48,6 +48,9 @@ struct GeneralSettingsView: View {
     @AppStorage("interfaceLanguage") private var interfaceLanguage = "zh-Hans"
     @AppStorage("launchAtLogin") private var launchAtLogin = false
     @AppStorage("showInDock") private var showInDock = false
+    @AppStorage("apiTimeout") private var apiTimeout: Double = 10.0
+    @AppStorage("logLevel") private var logLevel = "off"
+    @State private var showingLogViewer = false
 
     var body: some View {
         Form {
@@ -73,9 +76,112 @@ struct GeneralSettingsView: View {
                     .frame(width: 120)
                 }
             }
+
+            Section("API 设置") {
+                HStack {
+                    Text("模型请求超时")
+                    Spacer()
+                    TextField("", value: $apiTimeout, format: .number)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 60)
+                    Text("秒")
+                        .foregroundColor(.secondary)
+                }
+                Text("默认 10 秒。如果模型响应较慢可适当增大此值。")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
+            Section("日志") {
+                Picker("日志级别", selection: $logLevel) {
+                    ForEach(LogLevel.allCases, id: \.rawValue) { level in
+                        Text(level.displayName).tag(level.rawValue)
+                    }
+                }
+
+                Text("Info: 记录关键操作事件。Debug: 记录所有详细信息，包括请求/响应内容。")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+
+                HStack {
+                    Button("查看日志") {
+                        showingLogViewer = true
+                    }
+
+                    Button("打开日志文件夹") {
+                        NSWorkspace.shared.open(Logger.shared.logDirectory)
+                    }
+
+                    Spacer()
+
+                    Button("清除日志") {
+                        Logger.shared.clearLogs()
+                    }
+                    .foregroundColor(.red)
+                }
+            }
         }
         .formStyle(.grouped)
         .padding()
+        .sheet(isPresented: $showingLogViewer) {
+            LogViewerView()
+        }
+    }
+}
+
+// MARK: - Log Viewer
+
+struct LogViewerView: View {
+    @State private var logFiles: [URL] = []
+    @State private var selectedFile: URL?
+    @State private var logContent: String = ""
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text("应用日志")
+                    .font(.headline)
+                Spacer()
+                Button("关闭") { dismiss() }
+            }
+            .padding()
+
+            Divider()
+
+            HSplitView {
+                // File list
+                List(logFiles, id: \.absoluteString, selection: $selectedFile) { file in
+                    Text(file.lastPathComponent)
+                        .font(.system(size: 12, design: .monospaced))
+                }
+                .frame(minWidth: 180, maxWidth: 200)
+                .onChange(of: selectedFile) { newValue in
+                    if let url = newValue {
+                        logContent = Logger.shared.readLogFile(at: url)
+                    }
+                }
+
+                // Log content
+                ScrollView {
+                    Text(logContent)
+                        .font(.system(size: 11, design: .monospaced))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(8)
+                        .textSelection(.enabled)
+                }
+                .frame(minWidth: 400)
+                .background(Color(NSColor.textBackgroundColor))
+            }
+        }
+        .frame(width: 700, height: 500)
+        .onAppear {
+            logFiles = Logger.shared.getLogFiles()
+            if let first = logFiles.first {
+                selectedFile = first
+                logContent = Logger.shared.readLogFile(at: first)
+            }
+        }
     }
 }
 

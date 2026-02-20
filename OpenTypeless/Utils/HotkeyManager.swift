@@ -34,6 +34,8 @@ class HotkeyManager: ObservableObject {
     // Track which key-based shortcut is currently held (for hold-to-talk)
     private var voiceInputKeyHeld: Bool = false
 
+    private let log = Logger.shared
+
     // Callbacks for voice input (hold-to-talk)
     var onVoiceInputDown: (() -> Void)?
     var onVoiceInputUp: (() -> Void)?
@@ -55,7 +57,7 @@ class HotkeyManager: ObservableObject {
     }
 
     private init() {
-        print("[HotkeyManager] Initializing...")
+        log.info("Initializing...", tag: "HotkeyManager")
         reloadShortcuts()
     }
 
@@ -68,16 +70,16 @@ class HotkeyManager: ObservableObject {
         handsFreeCombo = settings.getHandsFreeShortcut()
         translateCombo = settings.getTranslateShortcut()
 
-        print("[HotkeyManager] Shortcuts loaded:")
-        print("[HotkeyManager]   Voice Input: \(voiceInputCombo.displayString)")
-        print("[HotkeyManager]   Hands-Free:  \(handsFreeCombo.displayString)")
-        print("[HotkeyManager]   Translate:   \(translateCombo.displayString)")
+        log.info("Shortcuts loaded:", tag: "HotkeyManager")
+        log.info("  Voice Input: \(voiceInputCombo.displayString)", tag: "HotkeyManager")
+        log.info("  Hands-Free:  \(handsFreeCombo.displayString)", tag: "HotkeyManager")
+        log.info("  Translate:   \(translateCombo.displayString)", tag: "HotkeyManager")
     }
 
     // MARK: - Monitoring
 
     func startMonitoring() {
-        print("[HotkeyManager] Starting hotkey monitoring...")
+        log.info("Starting hotkey monitoring...", tag: "HotkeyManager")
         reloadShortcuts()
 
         // Monitor for flags changed events (modifier keys including fn)
@@ -102,12 +104,12 @@ class HotkeyManager: ObservableObject {
             return event
         }
 
-        print("[HotkeyManager] Monitoring started")
-        print("[HotkeyManager] Listening for shortcuts...")
+        log.info("Monitoring started", tag: "HotkeyManager")
+        log.info("Listening for shortcuts...", tag: "HotkeyManager")
     }
 
     func stopMonitoring() {
-        print("[HotkeyManager] Stopping hotkey monitoring...")
+        log.info("Stopping hotkey monitoring...", tag: "HotkeyManager")
 
         if let monitor = flagsMonitor {
             NSEvent.removeMonitor(monitor)
@@ -126,7 +128,7 @@ class HotkeyManager: ObservableObject {
             localKeyMonitor = nil
         }
 
-        print("[HotkeyManager] Monitoring stopped")
+        log.info("Monitoring stopped", tag: "HotkeyManager")
     }
 
     // MARK: - Event Handling
@@ -141,7 +143,7 @@ class HotkeyManager: ObservableObject {
             if matched && !voiceInputModifierHeld {
                 // Modifier combo just pressed
                 voiceInputModifierHeld = true
-                print("[HotkeyManager] Voice input shortcut DOWN (\(voiceInputCombo.displayString))")
+                log.debug("Voice input shortcut DOWN (\(voiceInputCombo.displayString))", tag: "HotkeyManager")
                 DispatchQueue.main.async {
                     self.isFnKeyPressed = true
                     self.isRecording = true
@@ -150,7 +152,7 @@ class HotkeyManager: ObservableObject {
             } else if !matched && voiceInputModifierHeld {
                 // Modifier combo just released
                 voiceInputModifierHeld = false
-                print("[HotkeyManager] Voice input shortcut UP (\(voiceInputCombo.displayString))")
+                log.debug("Voice input shortcut UP (\(voiceInputCombo.displayString))", tag: "HotkeyManager")
                 DispatchQueue.main.async {
                     self.isFnKeyPressed = false
                     self.isRecording = false
@@ -161,11 +163,7 @@ class HotkeyManager: ObservableObject {
 
         // --- Hands-Free (modifier-only, toggle) ---
         if handsFreeCombo.isModifierOnly {
-            // For toggle mode with modifier-only, trigger on press (all flags matched)
-            // We need a different tracking approach: detect transition to matched state
             let matched = handsFreeCombo.matchesModifierFlags(flags)
-            // We use a static-like approach: store previous state
-            // This is already handled by the toggle in handleHandsFreeModifier below
             handleHandsFreeModifierToggle(matched: matched)
         }
 
@@ -183,7 +181,7 @@ class HotkeyManager: ObservableObject {
         if matched && !handsFreeModifierWasMatched {
             // Transition to matched: trigger toggle
             handsFreeModifierWasMatched = true
-            print("[HotkeyManager] Hands-free toggle (\(handsFreeCombo.displayString))")
+            log.debug("Hands-free toggle (\(handsFreeCombo.displayString))", tag: "HotkeyManager")
             DispatchQueue.main.async {
                 self.isHandsFreeActive.toggle()
                 self.onHandsFreeToggle?(self.isHandsFreeActive)
@@ -196,7 +194,7 @@ class HotkeyManager: ObservableObject {
     private func handleTranslateModifierPress(matched: Bool) {
         if matched && !translateModifierWasMatched {
             translateModifierWasMatched = true
-            print("[HotkeyManager] Translate triggered (\(translateCombo.displayString))")
+            log.debug("Translate triggered (\(translateCombo.displayString))", tag: "HotkeyManager")
             DispatchQueue.main.async {
                 self.onTranslate?()
             }
@@ -213,7 +211,7 @@ class HotkeyManager: ObservableObject {
         if !voiceInputCombo.isModifierOnly {
             if isKeyDown && voiceInputCombo.matchesKeyEvent(event) && !voiceInputKeyHeld {
                 voiceInputKeyHeld = true
-                print("[HotkeyManager] Voice input shortcut DOWN (\(voiceInputCombo.displayString))")
+                log.debug("Voice input shortcut DOWN (\(voiceInputCombo.displayString))", tag: "HotkeyManager")
                 DispatchQueue.main.async {
                     self.isFnKeyPressed = true
                     self.isRecording = true
@@ -221,7 +219,7 @@ class HotkeyManager: ObservableObject {
                 }
             } else if isKeyUp && voiceInputKeyHeld && event.keyCode == voiceInputCombo.keyCode {
                 voiceInputKeyHeld = false
-                print("[HotkeyManager] Voice input shortcut UP (\(voiceInputCombo.displayString))")
+                log.debug("Voice input shortcut UP (\(voiceInputCombo.displayString))", tag: "HotkeyManager")
                 DispatchQueue.main.async {
                     self.isFnKeyPressed = false
                     self.isRecording = false
@@ -233,7 +231,7 @@ class HotkeyManager: ObservableObject {
         // --- Hands-Free (key-based, toggle on keyDown) ---
         if !handsFreeCombo.isModifierOnly {
             if isKeyDown && handsFreeCombo.matchesKeyEvent(event) && !event.isARepeat {
-                print("[HotkeyManager] Hands-free toggle (\(handsFreeCombo.displayString))")
+                log.debug("Hands-free toggle (\(handsFreeCombo.displayString))", tag: "HotkeyManager")
                 DispatchQueue.main.async {
                     self.isHandsFreeActive.toggle()
                     self.onHandsFreeToggle?(self.isHandsFreeActive)
@@ -244,7 +242,7 @@ class HotkeyManager: ObservableObject {
         // --- Translate (key-based, single press on keyDown) ---
         if !translateCombo.isModifierOnly {
             if isKeyDown && translateCombo.matchesKeyEvent(event) && !event.isARepeat {
-                print("[HotkeyManager] Translate triggered (\(translateCombo.displayString))")
+                log.debug("Translate triggered (\(translateCombo.displayString))", tag: "HotkeyManager")
                 DispatchQueue.main.async {
                     self.onTranslate?()
                 }

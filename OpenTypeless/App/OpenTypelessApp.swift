@@ -28,10 +28,15 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     // Timing for history records
     private var recordingStartTime: Date?
 
+    /// Active AI task that can be cancelled from the close button
+    private var activeAITask: Task<Void, Never>?
+
+    private let log = Logger.shared
+
     func applicationDidFinishLaunching(_ notification: Notification) {
-        print("========================================")
-        print("[App] OpenTypeless starting...")
-        print("========================================")
+        log.info("========================================", tag: "App")
+        log.info("OpenTypeless starting...", tag: "App")
+        log.info("========================================", tag: "App")
 
         setupMenuBar()
         requestPermissions()
@@ -39,19 +44,19 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         setupSpeechRecognition()
         observeSettingsChanges()
 
-        print("[App] ✅ App initialization complete")
-        print("========================================")
+        log.info("App initialization complete", tag: "App")
+        log.info("========================================", tag: "App")
     }
 
     func applicationWillTerminate(_ notification: Notification) {
-        print("[App] Shutting down...")
+        log.info("Shutting down...", tag: "App")
         hotkeyManager.stopMonitoring()
     }
 
     // MARK: - Menu Bar Setup
 
     private func setupMenuBar() {
-        print("[App] Setting up menu bar...")
+        log.info("Setting up menu bar...", tag: "App")
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
 
@@ -66,7 +71,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 button.image = NSImage(systemSymbolName: "mic.fill", accessibilityDescription: "OpenTypeless")
             }
             button.action = #selector(toggleMainWindow)
-            print("[App] ✅ Menu bar icon created")
+            log.info("Menu bar icon created", tag: "App")
         }
 
         // Create the main window
@@ -82,7 +87,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         window.title = "OpenTypeless"
         mainWindow = window
 
-        print("[App] ✅ Menu bar setup complete")
+        log.info("Menu bar setup complete", tag: "App")
     }
 
     @objc private func toggleMainWindow() {
@@ -115,39 +120,37 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     // MARK: - Permissions
 
     private func requestPermissions() {
-        print("[App] Checking permissions...")
+        log.info("Checking permissions...", tag: "App")
 
         // Request microphone permission
-        print("[App] Requesting microphone permission...")
-        AVCaptureDevice.requestAccess(for: .audio) { granted in
-            print("[App] Microphone permission: \(granted ? "✅ granted" : "❌ denied")")
+        log.info("Requesting microphone permission...", tag: "App")
+        AVCaptureDevice.requestAccess(for: .audio) { [weak self] granted in
+            self?.log.info("Microphone permission: \(granted ? "granted" : "denied")", tag: "App")
         }
 
         // Request speech recognition permission
-        print("[App] Requesting speech recognition permission...")
-        SFSpeechRecognizer.requestAuthorization { status in
+        log.info("Requesting speech recognition permission...", tag: "App")
+        SFSpeechRecognizer.requestAuthorization { [weak self] status in
             let statusStr: String
             switch status {
-            case .authorized: statusStr = "✅ authorized"
-            case .denied: statusStr = "❌ denied"
-            case .restricted: statusStr = "⚠️ restricted"
-            case .notDetermined: statusStr = "⏳ not determined"
-            @unknown default: statusStr = "❓ unknown"
+            case .authorized: statusStr = "authorized"
+            case .denied: statusStr = "denied"
+            case .restricted: statusStr = "restricted"
+            case .notDetermined: statusStr = "not determined"
+            @unknown default: statusStr = "unknown"
             }
-            print("[App] Speech recognition permission: \(statusStr)")
+            self?.log.info("Speech recognition permission: \(statusStr)", tag: "App")
         }
 
         // Check accessibility permission
-        print("[App] Checking accessibility permission...")
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+        log.info("Checking accessibility permission...", tag: "App")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
             let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true]
             let accessibilityEnabled = AXIsProcessTrustedWithOptions(options as CFDictionary)
-            print("[App] Accessibility permission: \(accessibilityEnabled ? "✅ granted" : "❌ denied")")
+            self?.log.info("Accessibility permission: \(accessibilityEnabled ? "granted" : "denied")", tag: "App")
 
             if !accessibilityEnabled {
-                print("[App] ⚠️ Accessibility permission required for text insertion.")
-                print("[App]    Please go to: System Settings → Privacy & Security → Accessibility")
-                print("[App]    Then add this app or Xcode (if running from Xcode)")
+                self?.log.info("Accessibility permission required for text insertion. Go to: System Settings > Privacy & Security > Accessibility", tag: "App")
             }
         }
     }
@@ -155,88 +158,88 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     // MARK: - Hotkey Setup
 
     private func setupHotkeys() {
-        print("[App] Setting up hotkeys...")
+        log.info("Setting up hotkeys...", tag: "App")
 
         // Voice input: hold-to-talk
         hotkeyManager.onVoiceInputDown = { [weak self] in
-            print("[App] Voice input shortcut pressed - starting voice input")
+            self?.log.info("Voice input shortcut pressed - starting voice input", tag: "App")
             self?.startVoiceInput()
         }
 
         hotkeyManager.onVoiceInputUp = { [weak self] in
-            print("[App] Voice input shortcut released - stopping voice input")
+            self?.log.info("Voice input shortcut released - stopping voice input", tag: "App")
             self?.stopVoiceInput()
         }
 
         // Hands-free mode: toggle
         hotkeyManager.onHandsFreeToggle = { [weak self] isActive in
             if isActive {
-                print("[App] Hands-free mode ON")
+                self?.log.info("Hands-free mode ON", tag: "App")
                 self?.startVoiceInput()
             } else {
-                print("[App] Hands-free mode OFF")
+                self?.log.info("Hands-free mode OFF", tag: "App")
                 self?.stopVoiceInput()
             }
         }
 
         // Translate mode: single press
-        hotkeyManager.onTranslate = {
-            print("[App] Translate shortcut triggered")
+        hotkeyManager.onTranslate = { [weak self] in
+            self?.log.info("Translate shortcut triggered", tag: "App")
             // TODO: Implement translate selected text
         }
 
         hotkeyManager.startMonitoring()
-        print("[App] Hotkey setup complete")
+        log.info("Hotkey setup complete", tag: "App")
     }
 
     // MARK: - Speech Recognition Setup
 
     private func setupSpeechRecognition() {
-        print("[App] Setting up speech recognition...")
+        log.info("Setting up speech recognition...", tag: "App")
 
         // Get selected provider from settings
         let selectedProvider = UserDefaults.standard.string(forKey: "speechProvider") ?? "apple"
-        print("[App] Selected speech provider: \(selectedProvider)")
+        log.info("Selected speech provider: \(selectedProvider)", tag: "App")
 
         var didFallback = false
         var fallbackFrom = ""
 
         switch selectedProvider {
         case "azure":
-            print("[App] Using Azure Speech Service")
+            log.info("Using Azure Speech Service", tag: "App")
             let azureProvider = AzureSpeechProvider()
             if azureProvider.isAvailable {
                 speechProvider = azureProvider
             } else {
-                print("[App] ⚠️ Azure Speech not configured, falling back to Apple Speech")
+                log.info("Azure Speech not configured, falling back to Apple Speech", tag: "App")
                 speechProvider = AppleSpeechProvider()
                 didFallback = true
                 fallbackFrom = "Azure Speech Service"
             }
         case "whisper":
-            print("[App] Using Azure OpenAI Whisper")
+            log.info("Using Azure OpenAI Whisper", tag: "App")
             let whisperProvider = WhisperSpeechProvider()
             if whisperProvider.isAvailable {
                 speechProvider = whisperProvider
             } else {
-                print("[App] Azure OpenAI Whisper not configured, falling back to Apple Speech")
+                log.info("Azure OpenAI Whisper not configured, falling back to Apple Speech", tag: "App")
                 speechProvider = AppleSpeechProvider()
                 didFallback = true
                 fallbackFrom = "Azure OpenAI Whisper"
             }
         case "gpt4o-transcribe":
-            print("[App] Using GPT-4o Transcribe")
+            log.info("Using GPT-4o Transcribe", tag: "App")
             let provider = GPT4oTranscribeSpeechProvider()
             if provider.isAvailable {
                 speechProvider = provider
             } else {
-                print("[App] GPT-4o Transcribe not configured, falling back to Apple Speech")
+                log.info("GPT-4o Transcribe not configured, falling back to Apple Speech", tag: "App")
                 speechProvider = AppleSpeechProvider()
                 didFallback = true
                 fallbackFrom = "GPT-4o Transcribe"
             }
         default:
-            print("[App] Using Apple Speech Framework")
+            log.info("Using Apple Speech Framework", tag: "App")
             speechProvider = AppleSpeechProvider()
         }
 
@@ -249,21 +252,21 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
 
         speechProvider?.onPartialResult { [weak self] result in
-            print("[App] Partial result: \(result.text)")
+            self?.log.debug("Partial result: \(result.text)", tag: "App")
             self?.floatingPanel.updateTranscription(result.text)
         }
 
-        speechProvider?.onError { error in
-            print("[App] ❌ Speech recognition error: \(error.localizedDescription)")
+        speechProvider?.onError { [weak self] error in
+            self?.log.info("Speech recognition error: \(error.localizedDescription)", tag: "App")
         }
 
         // Setup AI provider
         aiProvider = AzureOpenAIProvider()
         let aiEnabled = UserDefaults.standard.bool(forKey: "aiPolishEnabled")
-        print("[App] AI polish: \(aiEnabled ? "enabled" : "disabled")")
+        log.info("AI polish: \(aiEnabled ? "enabled" : "disabled")", tag: "App")
 
-        print("[App] ✅ Speech recognition setup complete")
-        print("[App] Active provider: \(speechProvider?.name ?? "unknown")")
+        log.info("Speech recognition setup complete", tag: "App")
+        log.info("Active provider: \(speechProvider?.name ?? "unknown")", tag: "App")
     }
 
     // MARK: - Settings Observer
@@ -288,7 +291,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             // Check for speech provider changes
             let current = UserDefaults.standard.string(forKey: "speechProvider") ?? "apple"
             if current != self.speechProvider?.identifier {
-                print("[App] Speech provider setting changed to: \(current), reinitializing...")
+                self.log.info("Speech provider setting changed to: \(current), reinitializing...", tag: "App")
                 self.setupSpeechRecognition()
             }
 
@@ -300,7 +303,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             )
             if newShortcuts != self.lastKnownShortcuts {
                 self.lastKnownShortcuts = newShortcuts
-                print("[App] Shortcut settings changed, reloading hotkeys...")
+                self.log.info("Shortcut settings changed, reloading hotkeys...", tag: "App")
                 self.hotkeyManager.reloadShortcuts()
             }
         }
@@ -309,7 +312,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     // MARK: - Voice Input
 
     private func startVoiceInput() {
-        print("[App] Starting voice input...")
+        log.info("Starting voice input...", tag: "App")
 
         // Clear any previous error/warning so it doesn't persist across attempts
         floatingPanel.fallbackWarning = nil
@@ -321,7 +324,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         do {
             try speechProvider?.beginCapture(language: language)
         } catch {
-            print("[App] ❌ Failed to begin capture: \(error)")
+            log.info("Failed to begin capture: \(error)", tag: "App")
         }
 
         // Update menu bar icon (tint red when recording)
@@ -340,18 +343,18 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         // Complete async recognition setup
         Task {
             do {
-                print("[App] Starting recognition with language: \(language)")
+                log.info("Starting recognition with language: \(language)", tag: "App")
                 try await speechProvider?.startRecognition(language: language)
-                print("[App] ✅ Speech recognition started")
+                log.info("Speech recognition started", tag: "App")
             } catch {
-                print("[App] ❌ Failed to start speech recognition: \(error)")
+                log.info("Failed to start speech recognition: \(error)", tag: "App")
                 floatingPanel.showError(error.localizedDescription)
             }
         }
     }
 
     private func stopVoiceInput() {
-        print("[App] Stopping voice input...")
+        log.info("Stopping voice input...", tag: "App")
 
         let recordingEndTime = Date()
         let recordingDurationMs = Int((recordingEndTime.timeIntervalSince(recordingStartTime ?? recordingEndTime)) * 1000)
@@ -367,34 +370,36 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
 
         // Stop speech recognition and get result
-        Task {
+        activeAITask = Task { [weak self] in
+            guard let self = self else { return }
+
             // Skip transcription if recording is too short (< 1 second) to avoid accidental triggers
             if recordingDurationMs < 1000 {
-                print("[App] ⚠️ Recording too short (\(recordingDurationMs)ms < 1000ms), skipping transcription")
-                speechProvider?.cancelRecognition()
-                floatingPanel.hidePanel()
+                self.log.info("Recording too short (\(recordingDurationMs)ms < 1000ms), skipping transcription", tag: "App")
+                self.speechProvider?.cancelRecognition()
+                self.floatingPanel.hidePanel()
                 return
             }
 
             do {
                 let sttStartTime = Date()
-                var result = try await speechProvider?.stopRecognition() ?? ""
+                var result = try await self.speechProvider?.stopRecognition() ?? ""
                 let sttEndTime = Date()
                 let transcriptionDurationMs = Int(sttEndTime.timeIntervalSince(sttStartTime) * 1000)
 
-                print("[App] ✅ Final transcription: \(result) (STT: \(transcriptionDurationMs)ms)")
+                self.log.info("Final transcription: \(result) (STT: \(transcriptionDurationMs)ms)", tag: "App")
 
                 if result.isEmpty {
-                    print("[App] ⚠️ No transcription result")
-                    floatingPanel.hidePanel()
+                    self.log.info("No transcription result", tag: "App")
+                    self.floatingPanel.hidePanel()
                     return
                 }
 
                 let originalText = result
                 let language = UserDefaults.standard.string(forKey: "speechLanguage") ?? "zh-CN"
-                let sttProviderId = speechProvider?.identifier ?? "unknown"
-                let sttProviderName = speechProvider?.name ?? "Unknown"
-                let audioFilePath = speechProvider?.lastAudioFilePath
+                let sttProviderId = self.speechProvider?.identifier ?? "unknown"
+                let sttProviderName = self.speechProvider?.name ?? "Unknown"
+                let audioFilePath = self.speechProvider?.lastAudioFilePath
 
                 // AI polish metadata
                 var aiPolishResult: AIPolishResult?
@@ -403,13 +408,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 let aiEnabled = UserDefaults.standard.bool(forKey: "aiPolishEnabled")
 
                 if aiEnabled {
-                    print("[App] 🤖 AI polish enabled, processing...")
-                    floatingPanel.updateTranscription("正在润色: \(result)")
+                    self.log.info("AI polish enabled, processing...", tag: "App")
+                    self.floatingPanel.showProcessing(originalText: result)
 
                     // Reload AI provider config
-                    aiProvider?.reloadConfig()
+                    self.aiProvider?.reloadConfig()
 
-                    if let aiProvider = aiProvider, aiProvider.isAvailable {
+                    if let aiProvider = self.aiProvider, aiProvider.isAvailable {
                         // Get system prompt, use default if empty
                         var systemPrompt = UserDefaults.standard.string(forKey: "aiSystemPrompt") ?? ""
                         if systemPrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -436,21 +441,35 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 输入：GPT纹身图模型
 输出：GPT文生图模型
 """
-                            print("[App] Using default system prompt (saved prompt was empty)")
+                            self.log.info("Using default system prompt (saved prompt was empty)", tag: "App")
                         }
 
                         do {
+                            // Check for cancellation before making API call
+                            try Task.checkCancellation()
+
                             let polishResult = try await aiProvider.polishWithMetadata(text: result, systemPrompt: systemPrompt)
-                            print("[App] ✅ AI polished: \(polishResult.text) (model: \(polishResult.modelName), \(polishResult.durationMs)ms)")
+                            self.log.info("AI polished: \(polishResult.text) (model: \(polishResult.modelName), \(polishResult.durationMs)ms)", tag: "App")
                             result = polishResult.text
                             aiPolishResult = polishResult
+                        } catch is CancellationError {
+                            self.log.info("AI polish cancelled by user", tag: "App")
+                            self.floatingPanel.hidePanel()
+                            return
                         } catch {
-                            print("[App] ❌ AI polish failed: \(error)")
+                            self.log.info("AI polish failed: \(error)", tag: "App")
                             // Continue with original text if AI fails
                         }
                     } else {
-                        print("[App] ⚠️ AI provider not configured, using original text")
+                        self.log.info("AI provider not configured, using original text", tag: "App")
                     }
+                }
+
+                // Check for cancellation before inserting text
+                guard !Task.isCancelled else {
+                    self.log.info("Task cancelled, skipping text insertion", tag: "App")
+                    self.floatingPanel.hidePanel()
+                    return
                 }
 
                 // Save history record
@@ -464,24 +483,44 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                     sttProviderName: sttProviderName,
                     originalText: originalText,
                     transcriptionDurationMs: transcriptionDurationMs,
-                    aiProviderName: aiPolishResult != nil ? aiProvider?.name : nil,
+                    aiProviderName: aiPolishResult != nil ? self.aiProvider?.name : nil,
                     aiModelName: aiPolishResult?.modelName,
                     polishedText: aiPolishResult?.text,
                     polishDurationMs: aiPolishResult?.durationMs
                 )
                 await HistoryManager.shared.addRecord(record)
 
-                floatingPanel.showResult(result)
+                self.floatingPanel.showResult(result)
                 // Insert text at cursor position
-                await insertText(result)
+                await self.insertText(result)
 
+            } catch is CancellationError {
+                self.log.info("Voice input task cancelled", tag: "App")
+                self.floatingPanel.hidePanel()
             } catch SpeechRecognitionError.rateLimited {
-                print("[App] ⚠️ Whisper API rate limit reached (HTTP 429)")
-                floatingPanel.fallbackWarning = "Whisper API 请求频率超限，请稍后再试"
-                floatingPanel.showError("请求过于频繁，请稍等片刻后重试")
+                self.log.info("Whisper API rate limit reached (HTTP 429)", tag: "App")
+                self.floatingPanel.fallbackWarning = "Whisper API 请求频率超限，请稍后再试"
+                self.floatingPanel.showError("请求过于频繁，请稍等片刻后重试")
             } catch {
-                print("[App] ❌ Failed to stop speech recognition: \(error)")
-                floatingPanel.showError(error.localizedDescription)
+                self.log.info("Failed to stop speech recognition: \(error)", tag: "App")
+                self.floatingPanel.showError(error.localizedDescription)
+            }
+        }
+
+        // Register the cancel handler on the floating panel
+        floatingPanel.onCancel = { [weak self] in
+            self?.log.info("User cancelled via close button", tag: "App")
+            self?.activeAITask?.cancel()
+            self?.speechProvider?.cancelRecognition()
+            self?.floatingPanel.hidePanel()
+            // Reset menu bar icon
+            DispatchQueue.main.async {
+                if let image = NSImage(named: "MenuBarIcon") {
+                    image.isTemplate = true
+                    image.size = NSSize(width: 18, height: 18)
+                    self?.statusItem.button?.image = image
+                }
+                self?.statusItem.button?.contentTintColor = nil
             }
         }
     }
@@ -490,16 +529,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     @MainActor
     private func insertText(_ text: String) async {
-        print("[App] Inserting text: \(text)")
+        log.debug("Inserting text: \(text)", tag: "App")
 
         // Check accessibility permission
         guard AXIsProcessTrusted() else {
-            print("[App] ❌ Cannot insert text - accessibility permission not granted")
+            log.info("Cannot insert text - accessibility permission not granted", tag: "App")
             return
         }
 
         // Use keyboard simulation to insert text
-        print("[App] Simulating keyboard input...")
+        log.debug("Simulating keyboard input...", tag: "App")
 
         // Copy text to clipboard
         let pasteboard = NSPasteboard.general
@@ -519,6 +558,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         keyUp?.flags = .maskCommand
         keyUp?.post(tap: .cghidEventTap)
 
-        print("[App] ✅ Text inserted via clipboard paste")
+        log.info("Text inserted via clipboard paste", tag: "App")
     }
 }
