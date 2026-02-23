@@ -1,80 +1,6 @@
 # OpenTypeless 开发规划
 
-> 1:1 复刻 [Typeless](https://www.typeless.com/) 的开源 macOS 应用
-
-## 项目概述
-
-OpenTypeless 是一款 AI 驱动的语音输入助手，让用户可以在任何应用中通过语音快速输入、重写和翻译文本。
-
----
-
-## 架构设计：服务抽象层
-
-为了保证未来的可扩展性，项目采用 **Protocol-based 服务抽象层** 设计，允许用户在设置中自由切换不同的服务提供商。
-
-### 语音识别服务 (SpeechRecognitionProvider)
-
-```swift
-protocol SpeechRecognitionProvider {
-    var name: String { get }
-    var supportsRealtime: Bool { get }
-    var supportsOffline: Bool { get }
-
-    func startRecognition(language: String) async throws
-    func stopRecognition() async throws -> String
-    func onPartialResult(_ handler: @escaping (String) -> Void)
-}
-```
-
-**支持的提供商：**
-
-| 提供商 | 实时识别 | 离线支持 | 备注 |
-|--------|----------|----------|------|
-| Apple Speech Framework | ✅ | ✅ | 默认，免费，隐私友好 |
-| Azure Speech Service | ✅ | ❌ | 高精度，多语言，需 API Key |
-| OpenAI Whisper API | ❌ | ❌ | 高精度，需 API Key |
-| 本地 Whisper | ❌ | ✅ | 完全离线，需下载模型 |
-
-### AI 处理服务 (AIProvider)
-
-```swift
-protocol AIProvider {
-    var name: String { get }
-
-    func format(text: String, context: FormatContext) async throws -> String
-    func rewrite(text: String, instruction: String) async throws -> String
-    func translate(text: String, to language: String) async throws -> String
-}
-```
-
-**支持的提供商：**
-
-| 提供商 | 备注 |
-|--------|------|
-| OpenAI (GPT-4) | 默认推荐 |
-| Anthropic (Claude) | 高质量输出 |
-| Azure OpenAI | 企业级 |
-| 本地 LLM (Ollama) | 完全离线 |
-
-### 设置界面预览
-
-```
-┌─────────────────────────────────────┐
-│ 语音识别服务                          │
-│ ┌─────────────────────────────────┐ │
-│ │ ○ Apple Speech (推荐)           │ │
-│ │ ○ Azure Speech Service          │ │
-│ │ ○ OpenAI Whisper                │ │
-│ │ ○ 本地 Whisper                  │ │
-│ └─────────────────────────────────┘ │
-│                                     │
-│ Azure Speech Service 设置           │
-│ ┌─────────────────────────────────┐ │
-│ │ API Key: ••••••••••••           │ │
-│ │ Region:  eastasia               │ │
-│ └─────────────────────────────────┘ │
-└─────────────────────────────────────┘
-```
+> 开源的 AI 驱动 macOS 语音输入助手，灵感来自 [Typeless](https://www.typeless.com/)
 
 ---
 
@@ -84,8 +10,8 @@ protocol AIProvider {
 |------|------|--------|
 | 阶段 1：基础架构 | ✅ 已完成 | 100% |
 | 阶段 2：语音转文字 | ✅ 已完成 | 100% |
-| 阶段 3：AI 智能处理 | 🔨 进行中 | 50% |
-| 阶段 4：高级功能 | 🔲 待开始 | 0% |
+| 阶段 3：AI 智能处理 | 🔨 进行中 | 60% |
+| 阶段 4：高级功能 | 🔨 进行中 | 40% |
 
 状态图例：🔲 待开始 | 🔨 进行中 | ✅ 已完成
 
@@ -93,214 +19,86 @@ protocol AIProvider {
 
 ## 阶段 1：基础架构
 
-**目标**：搭建 macOS 菜单栏应用的基本框架
-
 | 任务 | 状态 | 备注 |
 |------|------|------|
-| 1.1 创建 Xcode 项目 | ✅ | Swift + SwiftUI, XcodeGen |
-| 1.2 菜单栏应用 (Menu Bar App) | ✅ | NSStatusItem + Popover |
-| 1.3 全局快捷键监听 | ✅ | HotkeyManager 监听 fn 键 |
-| 1.4 设置界面 UI | ✅ | 通用、语音、AI、快捷键、关于 |
-| 1.5 历史记录界面 UI | ✅ | 列表展示 + 词典 |
-
-### 技术细节
-- **框架**：Swift 5.9+ / SwiftUI
-- **最低支持**：macOS 13.0+
-- **快捷键**：NSEvent.addGlobalMonitorForEvents 监听 flagsChanged
+| 创建 Xcode 项目 | ✅ | Swift + SwiftUI, XcodeGen |
+| 菜单栏应用 | ✅ | NSStatusItem + 自定义窗口 |
+| 全局快捷键监听 | ✅ | HotkeyManager，支持自定义按键组合 |
+| 设置界面 | ✅ | 语音/AI/通用/快捷键/关于 五个 Tab |
+| 历史记录界面 | ✅ | 列表展示 + 搜索 + 录音回放 |
+| 浮动面板 | ✅ | NSPanel，录音/处理/完成三种状态 |
+| 文件日志系统 | ✅ | Info/Debug 两级，按天滚动，内置日志查看器 |
 
 ---
 
 ## 阶段 2：语音转文字
 
-**目标**：实现基础的语音识别和文字输入功能，采用可扩展的服务抽象层
-
 | 任务 | 状态 | 备注 |
 |------|------|------|
-| 2.1 麦克风权限请求 | ✅ | Info.plist 配置 |
-| 2.2 音频录制模块 | ✅ | 集成在各 Provider 中 |
-| 2.3 SpeechRecognitionProvider 协议 | ✅ | 服务抽象层 |
-| 2.4 Apple Speech 实现 | ✅ | 默认提供商，支持实时识别 |
-| 2.5 Azure Speech Service 实现 | ✅ | CocoaPods SDK 集成，连续识别 |
-| 2.6 服务提供商设置 UI | ✅ | 用户可切换 |
-| 2.7 获取当前光标位置 | ✅ | 使用剪贴板方式 |
-| 2.8 文字插入功能 | ✅ | 剪贴板 + Cmd+V 模拟 |
-| 2.9 实时转录显示 | ✅ | FloatingPanelController 浮动窗口 |
-
-### 技术细节
-- **架构**：Protocol-based 服务抽象层，支持运行时切换提供商
-- **默认**：Apple Speech Framework（离线、免费、隐私友好）
-- **可选**：Azure Speech Service（高精度、实时流式、多语言）
-- **权限**：需要麦克风权限 + 辅助功能权限
-- **依赖**：MicrosoftCognitiveServicesSpeech-macOS ~> 1.40 (CocoaPods)
-
-### Azure Speech Service 集成要点
-- ✅ 使用 Azure Speech SDK for macOS (CocoaPods)
-- ✅ 支持实时流式识别 (Continuous Recognition)
-- ✅ 用户可配置 API Key 和 Region
-- 🔲 支持自定义词汇表
+| 麦克风权限请求 | ✅ | Info.plist 配置 |
+| SpeechRecognitionProvider 协议 | ✅ | 服务抽象层 |
+| Apple Speech 实现 | ✅ | 实时识别，支持离线 |
+| Azure Speech Service 实现 | ✅ | CocoaPods SDK，连续识别 |
+| Azure OpenAI Whisper 实现 | ✅ | 录音后整段转写 |
+| GPT-4o Transcribe 实现 | ✅ | 高精度转写，支持 logprobs 和提示词 |
+| 文字插入功能 | ✅ | 剪贴板 + Cmd+V 模拟 |
+| 实时转录浮动窗口 | ✅ | FloatingPanelController |
+| 多语言支持 | ✅ | 10 种语言（中/英/日/韩/法/德/西/葡） |
 
 ---
 
 ## 阶段 3：AI 智能处理
 
-**目标**：接入 LLM 实现智能格式化、重写、翻译
-
 | 任务 | 状态 | 备注 |
 |------|------|------|
-| 3.1 LLM API 集成 | ✅ | Azure OpenAI (Chat Completions + Responses API) |
-| 3.2 智能格式化 | ✅ | AI 润色：标点、换行、分条列点、去重 |
-| 3.3 获取选中文本 | 🔲 | Accessibility API |
-| 3.4 文本重写功能 | 🔲 | 选中 + 语音指令 |
-| 3.5 翻译功能 | 🔲 | 弹窗显示结果 |
-| 3.6 结果替换/插入 | 🔲 | 替换选中文本 |
-
-### 技术细节
-- **已实现**：Azure OpenAI Provider，支持 Chat Completions API 和 Responses API
-- **Prompt 设计**：可自定义 System Prompt，支持恢复默认
-- **待扩展**：OpenAI / Claude / Ollama 提供商
+| AIProvider 协议 | ✅ | 服务抽象层 |
+| Azure OpenAI 实现 | ✅ | Chat Completions + Responses API |
+| 智能格式化 | ✅ | 修正错别字、标点、分条列点、去重 |
+| 可自定义 System Prompt | ✅ | 设置界面中可编辑，支持恢复默认 |
+| OpenAI Provider | 🔲 | 设置 UI 已就绪 |
+| Claude Provider | 🔲 | 设置 UI 已就绪 |
+| Ollama Provider | 🔲 | 设置 UI 已就绪 |
+| 获取选中文本 | 🔲 | Accessibility API |
+| 文本重写功能 | 🔲 | 选中 + 语音指令 |
+| 翻译功能 | 🔲 | 弹窗显示结果 |
 
 ---
 
 ## 阶段 4：高级功能
 
-**目标**：完善用户体验和个性化功能
-
 | 任务 | 状态 | 备注 |
 |------|------|------|
-| 4.1 历史记录存储 | 🔲 | SQLite / CoreData |
-| 4.2 历史记录管理 | 🔲 | 搜索、删除、导出 |
-| 4.3 个人词典 | 🔲 | 自动学习 + 手动添加 |
-| 4.4 多语言自动检测 | 🔲 | 语言识别 |
-| 4.5 免提模式 | 🔲 | 持续监听 |
-| 4.6 音频保存/回放 | 🔲 | 可选功能 |
+| 历史记录存储 | ✅ | SQLite (C API) |
+| 历史记录搜索 | ✅ | 全文搜索 |
+| 录音保存与回放 | ✅ | WAV 文件持久化 + AVAudioPlayer |
+| 原文/润色对照 | ✅ | 历史记录中可展开查看 |
+| 历史记录导出 | 🔲 | |
+| 个人词典 | 🔲 | 自动学习 + 手动添加 |
+| 多语言自动检测 | 🔲 | |
+| 登录时自动启动 | 🔲 | 设置 UI 已就绪，逻辑待实现 |
+| 代码签名与公证 | 🔲 | 正式分发需要 |
 
 ---
 
 ## 核心功能对照
 
 | Typeless 功能 | OpenTypeless | 状态 |
-|---------------|--------------|------|
-| 语音转文字 | ✓ 已实现 | ✅ |
-| 智能格式化 | ✓ 已实现 | ✅ |
-| 文本重写 | ✓ 计划实现 | 🔲 |
-| 翻译功能 | ✓ 计划实现 | 🔲 |
-| 多应用适配 | ✓ 已实现 | ✅ |
-| 历史记录 | ✓ UI 已完成 | 🔨 |
-| 个人词典 | ✓ UI 已完成 | 🔨 |
-| 多语言支持 | ✓ 已实现 | ✅ |
-
----
-
-## 快捷键设计
-
-| 操作 | 快捷键 | 说明 |
-|------|--------|------|
-| 语音输入 | `fn` 按住 | 按住说话，释放插入 |
-| 免提模式 | `fn` + `Space` | 持续监听 |
-| 翻译模式 | `fn` + `←` | 翻译选中文本 |
-| 停止录音 | `Esc` | 取消当前操作 |
-
----
-
-## 项目结构
-
-```
-OpenTypeless/
-├── OpenTypeless.xcodeproj        # Xcode 项目
-├── OpenTypeless/
-│   ├── App/                      # 应用入口
-│   │   └── OpenTypelessApp.swift
-│   ├── Views/                    # SwiftUI 视图
-│   │   ├── MenuBarView.swift
-│   │   ├── SettingsView.swift
-│   │   ├── HistoryView.swift
-│   │   └── FloatingTranscriptView.swift
-│   ├── Services/                 # 核心服务
-│   │   ├── Audio/
-│   │   │   └── AudioRecorder.swift
-│   │   ├── Speech/               # 语音识别抽象层
-│   │   │   ├── SpeechRecognitionProvider.swift  # Protocol
-│   │   │   ├── SpeechRecognitionManager.swift   # 统一管理器
-│   │   │   ├── Providers/
-│   │   │   │   ├── AppleSpeechProvider.swift    # Apple Speech
-│   │   │   │   ├── AzureSpeechProvider.swift    # Azure Speech
-│   │   │   │   ├── WhisperAPIProvider.swift     # OpenAI Whisper
-│   │   │   │   └── LocalWhisperProvider.swift   # 本地 Whisper
-│   │   │   └── Config/
-│   │   │       └── SpeechProviderConfig.swift   # 提供商配置
-│   │   ├── AI/                   # AI 处理抽象层
-│   │   │   ├── AIProvider.swift              # Protocol
-│   │   │   ├── AIManager.swift               # 统一管理器
-│   │   │   └── Providers/
-│   │   │       ├── OpenAIProvider.swift
-│   │   │       ├── ClaudeProvider.swift
-│   │   │       └── OllamaProvider.swift
-│   │   └── Accessibility/
-│   │       └── AccessibilityService.swift
-│   ├── Models/                   # 数据模型
-│   │   ├── TranscriptionRecord.swift
-│   │   ├── UserDictionary.swift
-│   │   └── AppSettings.swift
-│   ├── Utils/                    # 工具类
-│   │   ├── HotkeyManager.swift
-│   │   └── KeyboardSimulator.swift
-│   └── Resources/                # 资源文件
-├── ui_to_learn/                  # 参考截图
-├── logs/                         # 日志
-└── ROADMAP.md                    # 本文件
-```
-
----
-
-## 更新日志
-
-### 2026-02-09 (v4)
-- ✅ 完成阶段 1 所有任务（100%）
-  - 实现 HotkeyManager：fn 键按下/释放监听
-- ✅ 完成阶段 2 所有任务（100%）
-  - 完整实现 Azure Speech Service (CocoaPods SDK)
-  - 实现 FloatingPanelController 浮动窗口
-  - 实现文字插入（剪贴板 + Cmd+V）
-- ✅ 完成阶段 3 部分任务（50%）
-  - 实现 AzureOpenAIProvider
-  - 支持 Chat Completions API 和 Responses API
-  - 可自定义 AI 润色 System Prompt
-  - 优化默认 Prompt：支持分条列点、去重、多语言
-
-### 2026-02-09 (v3)
-- ✅ 完成阶段 1 核心任务（80%）
-  - 创建 Xcode 项目结构 (XcodeGen)
-  - 实现菜单栏应用 (NSStatusItem + Popover)
-  - 完成设置界面 (通用/语音/AI/快捷键/关于)
-  - 完成历史记录和词典界面
-- ✅ 完成阶段 2 部分任务（40%）
-  - 实现 SpeechRecognitionProvider 协议
-  - 完成 Apple Speech Provider
-  - 创建 Azure Speech Provider 骨架
-  - 完成服务提供商设置 UI
-- 新增 README.md 和 setup 脚本
-
-### 2026-02-09 (v2)
-- 新增服务抽象层架构设计
-- 支持多语音识别提供商：Apple Speech / Azure Speech / Whisper
-- 支持多 AI 提供商：OpenAI / Claude / Ollama
-- 更新项目结构，体现 Protocol-based 设计
-- 新增设置界面预览
-
-### 2026-02-09 (v1)
-- 创建项目规划文档
-- 完成功能调研和分析
-- 确定技术栈和开发阶段
+|---------------|-------------|------|
+| 语音转文字 | ✅ 4 个引擎 | ✅ |
+| 智能格式化 | ✅ AI 润色 | ✅ |
+| 文本重写 | 计划实现 | 🔲 |
+| 翻译功能 | 计划实现 | 🔲 |
+| 多应用适配 | ✅ 剪贴板模拟 | ✅ |
+| 历史记录 | ✅ SQLite + 搜索 + 回放 | ✅ |
+| 个人词典 | 计划实现 | 🔲 |
+| 多语言支持 | ✅ 10 种语言 | ✅ |
 
 ---
 
 ## 下一步
 
-继续 **阶段 3：AI 智能处理**
+- [ ] 实现 OpenAI / Claude / Ollama AI Provider
 - [ ] 获取选中文本 (Accessibility API)
 - [ ] 文本重写功能（选中 + 语音指令）
 - [ ] 翻译功能
-
-继续 **阶段 4：高级功能**
-- [ ] 历史记录存储 (CoreData/SQLite)
-- [ ] 个人词典功能
+- [ ] 代码签名与公证，正式发布
