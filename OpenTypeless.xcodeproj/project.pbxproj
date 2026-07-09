@@ -22,6 +22,7 @@
 		916D828873F4197CFE865C7E /* GPTRealtimeWhisperSpeechProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62C6D0978F54936D9427AC92 /* GPTRealtimeWhisperSpeechProvider.swift */; };
 		9299663A6DC9B17A21D81AFA /* AppleSpeechProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28A3DD57A9A952DD46C73E99 /* AppleSpeechProvider.swift */; };
 		B141FA995B0EE91F82F92043 /* SpeechRecognitionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A8F640A93C0A181DCF75BA5 /* SpeechRecognitionManager.swift */; };
+		C8DAAE757D674904535A5E79 /* VersionHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6FD5C388832059E711CC1F5 /* VersionHistory.swift */; };
 		D3C53EBA2E3591822AB346F1 /* FloatingTranscriptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D34A33AE50B82738A8CD7EE /* FloatingTranscriptView.swift */; };
 		D8963BA4377B8D3AC42973D2 /* GPT4oTranscribeSpeechProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76998A3FFCA3C2D9769BB5A8 /* GPT4oTranscribeSpeechProvider.swift */; };
 		E00D322E9B20E92737D0EE9B /* AIProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 364A217E94D33F21BEBCC653 /* AIProvider.swift */; };
@@ -55,6 +56,7 @@
 		DE12F159A81376B3622768D6 /* Pods-OpenTypeless.debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "Pods-OpenTypeless.debug.xcconfig"; sourceTree = "<group>"; };
 		E810483641135366C3989138 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		EC508C92D55F377C73C42108 /* Logger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Logger.swift; sourceTree = "<group>"; };
+		F6FD5C388832059E711CC1F5 /* VersionHistory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VersionHistory.swift; sourceTree = "<group>"; };
 		FAE28A5F20739EE69F990F30 /* Pods-OpenTypeless.release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "Pods-OpenTypeless.release.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -183,6 +185,7 @@
 				AF76CB2479930C1E7CEE07A7 /* AppSettings.swift */,
 				51B1E5F221F96A4339C67BAF /* KeyCombination.swift */,
 				729F8BDAEF6016D7125444FA /* TranscriptionRecord.swift */,
+				F6FD5C388832059E711CC1F5 /* VersionHistory.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -355,6 +358,7 @@
 				B141FA995B0EE91F82F92043 /* SpeechRecognitionManager.swift in Sources */,
 				69CE4AD000EE3B63287814FD /* SpeechRecognitionProvider.swift in Sources */,
 				135C72512E4B9E44540F3B7A /* TranscriptionRecord.swift in Sources */,
+				C8DAAE757D674904535A5E79 /* VersionHistory.swift in Sources */,
 				5316D6EAD77A8FE1B06D9CF1 /* WhisperSpeechProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -412,7 +416,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -432,7 +436,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 0.2.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -494,7 +498,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = "";
 				ENABLE_NS_ASSERTIONS = NO;
@@ -508,7 +512,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 0.2.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";

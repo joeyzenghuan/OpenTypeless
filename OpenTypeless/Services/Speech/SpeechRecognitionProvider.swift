@@ -50,6 +50,10 @@ protocol SpeechRecognitionProvider {
     /// - Parameter handler: Callback with error
     func onError(_ handler: @escaping (Error) -> Void)
 
+    /// Set handler for provider status messages during recognition
+    /// - Parameter handler: Callback with a user-visible status message
+    func onStatus(_ handler: @escaping (String) -> Void)
+
     /// Path to the last saved audio file (if applicable, e.g. Whisper provider)
     var lastAudioFilePath: String? { get }
 }
@@ -59,6 +63,10 @@ extension SpeechRecognitionProvider {
     var lastAudioFilePath: String? { nil }
     func beginCapture(language: String) throws {
         // Default no-op; providers that need synchronous start override this
+    }
+
+    func onStatus(_ handler: @escaping (String) -> Void) {
+        // Default no-op; providers with connection state can override this.
     }
 }
 

@@ -39,6 +39,7 @@ class AzureSpeechProvider: SpeechRecognitionProvider {
 
     private var partialResultHandler: ((SpeechRecognitionResult) -> Void)?
     private var errorHandler: ((Error) -> Void)?
+    private var statusHandler: ((String) -> Void)?
     private var finalTranscription: String = ""
     private var allTranscriptions: [String] = []
     private var isRecognizing: Bool = false
@@ -75,6 +76,7 @@ class AzureSpeechProvider: SpeechRecognitionProvider {
 
     func startRecognition(language: String) async throws {
         log.info("Starting recognition - language: \(language), region: \(region ?? "unknown")", tag: "AzureSpeech")
+        emitStatus("正在连接 Azure Speech Service...")
 
         guard isAvailable else {
             log.info("Not configured", tag: "AzureSpeech")
@@ -91,6 +93,7 @@ class AzureSpeechProvider: SpeechRecognitionProvider {
 
     func stopRecognition() async throws -> String {
         log.info("Stopping recognition...", tag: "AzureSpeech")
+        emitStatus("正在停止 Azure Speech Service...")
 
         #if canImport(MicrosoftCognitiveServicesSpeech)
         return try await stopAzureRecognition()
@@ -119,6 +122,10 @@ class AzureSpeechProvider: SpeechRecognitionProvider {
         errorHandler = handler
     }
 
+    func onStatus(_ handler: @escaping (String) -> Void) {
+        statusHandler = handler
+    }
+
     // MARK: - Azure Speech SDK Implementation
 
     #if canImport(MicrosoftCognitiveServicesSpeech)
@@ -129,6 +136,7 @@ class AzureSpeechProvider: SpeechRecognitionProvider {
         }
 
         // Create speech configuration
+        emitStatus("正在配置 Azure Speech Service...")
         let speechConfig: SPXSpeechConfiguration
         do {
             speechConfig = try SPXSpeechConfiguration(subscription: key, region: reg)
@@ -167,6 +175,9 @@ class AzureSpeechProvider: SpeechRecognitionProvider {
             guard let self = self else { return }
             let text = evt.result.text ?? ""
             self.log.debug("Recognizing: \(text)", tag: "AzureSpeech")
+            if !text.isEmpty {
+                self.emitStatus("检测到语音，正在识别...")
+            }
 
             // Update transcription
             let previousText = self.allTranscriptions.joined(separator: "")
@@ -189,6 +200,7 @@ class AzureSpeechProvider: SpeechRecognitionProvider {
 
             if !text.isEmpty {
                 self.log.debug("Recognized: \(text)", tag: "AzureSpeech")
+                self.emitStatus("Azure Speech Service 已连接，正在听...")
                 self.allTranscriptions.append(text)
                 self.finalTranscription = self.allTranscriptions.joined(separator: "")
 
@@ -210,17 +222,22 @@ class AzureSpeechProvider: SpeechRecognitionProvider {
             if evt.reason == SPXCancellationReason.error {
                 let errorDetails = evt.errorDetails ?? "Unknown error"
                 self.log.info("Error: \(errorDetails)", tag: "AzureSpeech")
-                self.errorHandler?(SpeechRecognitionError.recognitionFailed(reason: errorDetails))
+                let error = SpeechRecognitionError.recognitionFailed(reason: errorDetails)
+                self.emitStatus("Azure Speech Service 连接错误")
+                self.errorHandler?(error)
             }
         }
 
         // Start continuous recognition
         log.info("Starting continuous recognition...", tag: "AzureSpeech")
+        emitStatus("正在启动 Azure Speech Service 实时识别...")
         do {
             try recognizer.startContinuousRecognition()
+            emitStatus("Azure Speech Service 已连接，正在听...")
             log.info("Continuous recognition started", tag: "AzureSpeech")
         } catch {
             log.info("Failed to start recognition: \(error)", tag: "AzureSpeech")
+            emitStatus("Azure Speech Service 启动失败")
             throw SpeechRecognitionError.recognitionFailed(reason: error.localizedDescription)
         }
     }
@@ -234,8 +251,10 @@ class AzureSpeechProvider: SpeechRecognitionProvider {
         do {
             try recognizer.stopContinuousRecognition()
             log.info("Continuous recognition stopped", tag: "AzureSpeech")
+            emitStatus("Azure Speech Service 已停止")
         } catch {
             log.info("Failed to stop recognition: \(error)", tag: "AzureSpeech")
+            emitStatus("Azure Speech Service 停止失败")
         }
 
         // Wait a moment for final results
@@ -264,4 +283,8 @@ class AzureSpeechProvider: SpeechRecognitionProvider {
     }
 
     #endif
+
+    private func emitStatus(_ message: String) {
+        statusHandler?(message)
+    }
 }

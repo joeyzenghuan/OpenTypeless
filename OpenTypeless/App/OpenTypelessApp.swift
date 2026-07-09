@@ -269,6 +269,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
         speechProvider?.onError { [weak self] error in
             self?.log.info("Speech recognition error: \(error.localizedDescription)", tag: "App")
+            self?.floatingPanel.showError(error.localizedDescription)
+        }
+
+        speechProvider?.onStatus { [weak self] message in
+            self?.log.info("Speech recognition status: \(message)", tag: "App")
+            self?.floatingPanel.showStatus(message)
         }
 
         // Setup AI provider

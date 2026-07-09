@@ -947,7 +947,7 @@ struct AboutView: View {
                 .font(.largeTitle)
                 .fontWeight(.bold)
 
-            Text("版本 0.1.0")
+            Text("版本 \(AppVersion.displayName)")
                 .foregroundColor(.secondary)
 
             Text("AI 驱动的语音输入助手")

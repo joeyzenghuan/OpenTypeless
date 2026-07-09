@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides context for Claude Code when working on the OpenTypeless project.
+This file provides context for Codex when working on the OpenTypeless project.
 
 ## Project Overview
 
@@ -81,7 +81,7 @@ Non-realtime providers (Whisper, GPT-4o) record audio to a WAV file, then upload
 
 ## AI Providers
 
-Only `AzureOpenAIProvider` is implemented. It supports both Chat Completions API and Responses API. Other providers (OpenAI, Claude, Ollama) have settings UI but no backend implementation yet.
+Only `AzureOpenAIProvider` is implemented. It supports both Chat Completions API and Responses API. Other providers (OpenAI, Codex, Ollama) have settings UI but no backend implementation yet.
 
 ## Important Patterns
 

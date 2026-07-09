@@ -3,11 +3,17 @@ import AVFoundation
 
 struct MenuBarView: View {
     @State private var selectedTab: Tab = .home
+    @AppStorage("lastSeenVersion") private var lastSeenVersion = ""
 
     enum Tab {
         case home
         case history
+        case versionHistory
         case settings
+    }
+
+    private var hasUnreadVersion: Bool {
+        lastSeenVersion != AppVersion.identifier
     }
 
     var body: some View {
@@ -43,6 +49,16 @@ struct MenuBarView: View {
                     SidebarButton(icon: "clock", title: "历史记录", isSelected: selectedTab == .history) {
                         selectedTab = .history
                     }
+                    SidebarButton(
+                        icon: "clock.arrow.circlepath",
+                        title: "版本更新",
+                        subtitle: AppVersion.displayName,
+                        isSelected: selectedTab == .versionHistory,
+                        showBadge: hasUnreadVersion
+                    ) {
+                        selectedTab = .versionHistory
+                        lastSeenVersion = AppVersion.identifier
+                    }
                     Spacer()
 
                     Divider()
@@ -64,6 +80,8 @@ struct MenuBarView: View {
                         HomeTabView()
                     case .history:
                         HistoryTabView()
+                    case .versionHistory:
+                        VersionHistoryTabView()
                     case .settings:
                         SettingsTabView()
                     }
@@ -78,25 +96,127 @@ struct MenuBarView: View {
 struct SidebarButton: View {
     let icon: String
     let title: String
+    var subtitle: String? = nil
     let isSelected: Bool
+    var showBadge: Bool = false
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            HStack {
+            HStack(alignment: .center, spacing: 8) {
                 Image(systemName: icon)
                     .frame(width: 20)
-                Text(title)
-                    .font(.system(size: 12))
+                VStack(alignment: .leading, spacing: 1) {
+                    HStack(spacing: 4) {
+                        Text(title)
+                            .font(.system(size: 12))
+                        if showBadge {
+                            Circle()
+                                .fill(Color.red)
+                                .frame(width: 6, height: 6)
+                        }
+                    }
+                    if let subtitle {
+                        Text(subtitle)
+                            .font(.system(size: 9))
+                            .foregroundColor(.secondary)
+                    }
+                }
                 Spacer()
             }
-            .padding(.vertical, 6)
+            .padding(.vertical, subtitle == nil ? 6 : 5)
             .padding(.horizontal, 12)
             .background(isSelected ? Color.blue.opacity(0.1) : Color.clear)
             .cornerRadius(6)
         }
         .buttonStyle(.plain)
         .foregroundColor(isSelected ? .blue : .primary)
+    }
+}
+
+struct VersionHistoryTabView: View {
+    @AppStorage("lastSeenVersion") private var lastSeenVersion = ""
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("版本更新")
+                        .font(.headline)
+                    Text("当前版本 \(AppVersion.displayName)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                Spacer()
+            }
+            .padding(.horizontal)
+            .padding(.top)
+            .padding(.bottom, 8)
+
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 12) {
+                    ForEach(VersionHistory.entries) { entry in
+                        VersionHistoryEntryView(entry: entry)
+                    }
+                }
+                .padding(.horizontal)
+                .padding(.bottom, 16)
+            }
+        }
+        .onAppear {
+            lastSeenVersion = AppVersion.identifier
+        }
+    }
+}
+
+struct VersionHistoryEntryView: View {
+    let entry: VersionHistoryEntry
+
+    private var isCurrent: Bool {
+        entry.version == AppVersion.version && entry.build == AppVersion.build
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(entry.displayVersion)
+                    .font(.headline)
+                if isCurrent {
+                    Text("当前")
+                        .font(.caption2)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.blue.opacity(0.12))
+                        .foregroundColor(.blue)
+                        .cornerRadius(4)
+                }
+                Spacer()
+                Text(entry.date)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
+            Text(entry.title)
+                .font(.subheadline)
+                .fontWeight(.semibold)
+
+            VStack(alignment: .leading, spacing: 5) {
+                ForEach(entry.changes, id: \.self) { change in
+                    HStack(alignment: .top, spacing: 6) {
+                        Text("•")
+                            .foregroundColor(.secondary)
+                        Text(change)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(NSColor.controlBackgroundColor))
+        .cornerRadius(8)
     }
 }
 

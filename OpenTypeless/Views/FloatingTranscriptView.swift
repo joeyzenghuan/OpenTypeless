@@ -40,7 +40,6 @@ class FloatingPanelController: NSObject, ObservableObject {
             // fallbackWarning is preserved across sessions; set by AppDelegate
 
             self.panel?.orderFront(nil)
-            self.panel?.makeKey()
 
             self.log.debug("Panel is now visible", tag: "FloatingPanel")
         }
@@ -63,6 +62,13 @@ class FloatingPanelController: NSObject, ObservableObject {
             self.transcription = text
             self.statusMessage = text.isEmpty ? "正在听..." : "识别中..."
             self.log.debug("Transcription updated: \(text)", tag: "FloatingPanel")
+        }
+    }
+
+    func showStatus(_ message: String) {
+        DispatchQueue.main.async {
+            self.statusMessage = message
+            self.log.debug("Status updated: \(message)", tag: "FloatingPanel")
         }
     }
 

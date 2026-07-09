@@ -64,6 +64,7 @@ class GPTRealtimeWhisperSpeechProvider: NSObject, SpeechRecognitionProvider {
 
     private var partialResultHandler: ((SpeechRecognitionResult) -> Void)?
     private var errorHandler: ((Error) -> Void)?
+    private var statusHandler: ((String) -> Void)?
 
     private let log = Logger.shared
 
@@ -138,6 +139,7 @@ class GPTRealtimeWhisperSpeechProvider: NSObject, SpeechRecognitionProvider {
 
     func startRecognition(language: String) async throws {
         log.info("Starting realtime recognition - language: \(currentLanguage)", tag: "GPTRealtimeWhisper")
+        emitStatus("正在连接 GPT Realtime Whisper...")
 
         guard isAvailable else {
             throw SpeechRecognitionError.apiKeyMissing
@@ -167,6 +169,7 @@ class GPTRealtimeWhisperSpeechProvider: NSObject, SpeechRecognitionProvider {
                 sessionConfiguredContinuation = continuation
 
                 let timeout = DispatchWorkItem { [weak self] in
+                    self?.emitStatus("GPT Realtime Whisper 连接超时")
                     self?.rejectSessionConfigured(
                         SpeechRecognitionError.recognitionFailed(reason: "Timed out waiting for realtime transcription session")
                     )
@@ -183,6 +186,7 @@ class GPTRealtimeWhisperSpeechProvider: NSObject, SpeechRecognitionProvider {
         }
 
         flushPendingAudio()
+        emitStatus("GPT Realtime Whisper 已连接，正在听...")
         log.info("Realtime recognition started", tag: "GPTRealtimeWhisper")
     }
 
@@ -192,8 +196,9 @@ class GPTRealtimeWhisperSpeechProvider: NSObject, SpeechRecognitionProvider {
         stopAudioCapture()
 
         if isConnected {
+            emitStatus("正在等待 GPT Realtime Whisper 最终转写...")
             sendJSON(["type": "input_audio_buffer.commit"])
-            await waitForTranscriptSettled()
+            await waitForFinalTranscript()
         }
 
         disconnectWebSocket()
@@ -221,6 +226,10 @@ class GPTRealtimeWhisperSpeechProvider: NSObject, SpeechRecognitionProvider {
 
     func onError(_ handler: @escaping (Error) -> Void) {
         errorHandler = handler
+    }
+
+    func onStatus(_ handler: @escaping (String) -> Void) {
+        statusHandler = handler
     }
 
     // MARK: - Audio Handling
@@ -365,13 +374,7 @@ class GPTRealtimeWhisperSpeechProvider: NSObject, SpeechRecognitionProvider {
                             "type": "audio/pcm",
                             "rate": Int(inputSampleRate)
                         ],
-                        "transcription": transcription,
-                        "turn_detection": [
-                            "type": "server_vad",
-                            "threshold": 0.5,
-                            "prefix_padding_ms": 300,
-                            "silence_duration_ms": 500
-                        ]
+                        "transcription": transcription
                     ]
                 ]
             ]
@@ -460,9 +463,11 @@ class GPTRealtimeWhisperSpeechProvider: NSObject, SpeechRecognitionProvider {
                 self?.flushPendingAudio()
             }
             resolveSessionConfigured()
+            emitStatus("GPT Realtime Whisper 已连接，正在听...")
             log.info("Realtime session configured: \(type)", tag: "GPTRealtimeWhisper")
 
         case "input_audio_buffer.speech_started":
+            emitStatus("检测到语音，正在转写...")
             log.debug("Speech started", tag: "GPTRealtimeWhisper")
 
         case "session.input_transcript.delta", "conversation.item.input_audio_transcription.delta":
@@ -470,9 +475,13 @@ class GPTRealtimeWhisperSpeechProvider: NSObject, SpeechRecognitionProvider {
                 appendTranscriptDelta(delta)
             }
 
-        case "conversation.item.input_audio_transcription.completed":
+        case "session.input_transcript.completed", "conversation.item.input_audio_transcription.completed":
             let transcript = event["transcript"] as? String
             completeTranscript(transcript)
+
+        case "conversation.item.input_audio_transcription.failed":
+            let message = extractErrorMessage(from: event)
+            handleError(SpeechRecognitionError.recognitionFailed(reason: message))
 
         case "response.done", "session.closed":
             completeTranscript(nil)
@@ -561,12 +570,24 @@ class GPTRealtimeWhisperSpeechProvider: NSObject, SpeechRecognitionProvider {
         }
     }
 
-    private func waitForTranscriptSettled() async {
+    private func waitForFinalTranscript() async {
         let startedAt = Date()
 
-        while Date().timeIntervalSince(startedAt) < 2.0 {
+        while Date().timeIntervalSince(startedAt) < 4.0 {
             let shouldReturn = stateQueue.sync {
-                !finalTranscription.isEmpty && Date().timeIntervalSince(lastTranscriptUpdateAt) > 0.35
+                let hasAnyTranscript = !finalTranscription.isEmpty
+                let hasPendingPartial = !currentPartial.isEmpty
+                let idleTime = Date().timeIntervalSince(lastTranscriptUpdateAt)
+
+                if hasAnyTranscript && !hasPendingPartial && idleTime > 0.25 {
+                    return true
+                }
+
+                if !hasAnyTranscript && !hasPendingPartial && Date().timeIntervalSince(startedAt) > 0.8 {
+                    return true
+                }
+
+                return false
             }
 
             if shouldReturn {
@@ -623,7 +644,12 @@ class GPTRealtimeWhisperSpeechProvider: NSObject, SpeechRecognitionProvider {
 
     private func handleError(_ error: Error) {
         log.info("Realtime error: \(error.localizedDescription)", tag: "GPTRealtimeWhisper")
+        emitStatus("GPT Realtime Whisper 连接错误")
         errorHandler?(error)
+    }
+
+    private func emitStatus(_ message: String) {
+        statusHandler?(message)
     }
 }
 
@@ -634,6 +660,7 @@ extension GPTRealtimeWhisperSpeechProvider: URLSessionWebSocketDelegate {
         didOpenWithProtocol protocol: String?
     ) {
         log.info("WebSocket connected", tag: "GPTRealtimeWhisper")
+        emitStatus("已连接到服务器，正在配置转写...")
         receiveLoop()
         sendSessionUpdate()
     }
@@ -652,9 +679,10 @@ extension GPTRealtimeWhisperSpeechProvider: URLSessionWebSocketDelegate {
         }
 
         if !isDisconnecting {
-            rejectSessionConfigured(
-                SpeechRecognitionError.recognitionFailed(reason: reasonText.isEmpty ? "Realtime WebSocket closed" : reasonText)
-            )
+            emitStatus("GPT Realtime Whisper 连接已断开")
+            let error = SpeechRecognitionError.recognitionFailed(reason: reasonText.isEmpty ? "Realtime WebSocket closed" : reasonText)
+            rejectSessionConfigured(error)
+            handleError(error)
         }
     }
 }
