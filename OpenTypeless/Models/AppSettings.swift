@@ -35,6 +35,13 @@ class AppSettings: ObservableObject {
     @AppStorage("gpt4oTranscribeLogprobs") var gpt4oTranscribeLogprobs: Bool = false
     @AppStorage("gpt4oTranscribeLanguage") var gpt4oTranscribeLanguage: String = ""
 
+    // GPT Realtime Whisper (Azure OpenAI)
+    @AppStorage("gptRealtimeWhisperEndpoint") var gptRealtimeWhisperEndpoint: String = ""
+    @AppStorage("gptRealtimeWhisperDeployment") var gptRealtimeWhisperDeployment: String = "gpt-realtime-whisper-globalstandard"
+    @AppStorage("gptRealtimeWhisperAPIKey") var gptRealtimeWhisperAPIKey: String = ""
+    @AppStorage("gptRealtimeWhisperLanguage") var gptRealtimeWhisperLanguage: String = ""
+    @AppStorage("gptRealtimeWhisperPrompt") var gptRealtimeWhisperPrompt: String = ""
+
     // MARK: - AI Settings
 
     @AppStorage("aiProvider") var aiProvider: String = "openai"
@@ -131,6 +138,11 @@ class AppSettings: ObservableObject {
         gpt4oTranscribePrompt = ""
         gpt4oTranscribeLogprobs = false
         gpt4oTranscribeLanguage = ""
+        gptRealtimeWhisperEndpoint = ""
+        gptRealtimeWhisperDeployment = "gpt-realtime-whisper-globalstandard"
+        gptRealtimeWhisperAPIKey = ""
+        gptRealtimeWhisperLanguage = ""
+        gptRealtimeWhisperPrompt = ""
 
         aiProvider = "openai"
         openaiAPIKey = ""

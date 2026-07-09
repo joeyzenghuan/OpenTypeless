@@ -19,12 +19,12 @@
 		69CE4AD000EE3B63287814FD /* SpeechRecognitionProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D3901535AEEF2DEC1916AEB /* SpeechRecognitionProvider.swift */; };
 		6F04D6402FCB6C34A10E94FD /* AzureOpenAIProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B84C205582E04AAC212A298 /* AzureOpenAIProvider.swift */; };
 		8AEA0FA90ED8E5E9C182BE7C /* HotkeyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C91B68855168E73530DA5130 /* HotkeyManager.swift */; };
+		916D828873F4197CFE865C7E /* GPTRealtimeWhisperSpeechProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62C6D0978F54936D9427AC92 /* GPTRealtimeWhisperSpeechProvider.swift */; };
 		9299663A6DC9B17A21D81AFA /* AppleSpeechProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28A3DD57A9A952DD46C73E99 /* AppleSpeechProvider.swift */; };
 		B141FA995B0EE91F82F92043 /* SpeechRecognitionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A8F640A93C0A181DCF75BA5 /* SpeechRecognitionManager.swift */; };
 		D3C53EBA2E3591822AB346F1 /* FloatingTranscriptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D34A33AE50B82738A8CD7EE /* FloatingTranscriptView.swift */; };
 		D8963BA4377B8D3AC42973D2 /* GPT4oTranscribeSpeechProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76998A3FFCA3C2D9769BB5A8 /* GPT4oTranscribeSpeechProvider.swift */; };
 		E00D322E9B20E92737D0EE9B /* AIProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 364A217E94D33F21BEBCC653 /* AIProvider.swift */; };
-		EDDEBE5B45DA439703F2837A /* Pods_OpenTypeless.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 341CFAFF5CF15A266802E372 /* Pods_OpenTypeless.framework */; };
 		F35407B0BC82EC963B360805 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 178A68B2A3FB147A3BC530F9 /* SettingsView.swift */; };
 		FC71AF52DF9B672932644CB6 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E810483641135366C3989138 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
@@ -36,19 +36,17 @@
 		28A3DD57A9A952DD46C73E99 /* AppleSpeechProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSpeechProvider.swift; sourceTree = "<group>"; };
 		2A8E8FBBC65389E3B9A9CECD /* HistoryDatabase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryDatabase.swift; sourceTree = "<group>"; };
 		2D3901535AEEF2DEC1916AEB /* SpeechRecognitionProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechRecognitionProvider.swift; sourceTree = "<group>"; };
-		341CFAFF5CF15A266802E372 /* Pods_OpenTypeless.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_OpenTypeless.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		364A217E94D33F21BEBCC653 /* AIProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIProvider.swift; sourceTree = "<group>"; };
 		389663F9667847A5F1D6B800 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
-		3A4FAE91D5589EBB4DB61D12 /* Pods-OpenTypeless.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-OpenTypeless.release.xcconfig"; path = "Target Support Files/Pods-OpenTypeless/Pods-OpenTypeless.release.xcconfig"; sourceTree = "<group>"; };
 		51B1E5F221F96A4339C67BAF /* KeyCombination.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyCombination.swift; sourceTree = "<group>"; };
 		5D34A33AE50B82738A8CD7EE /* FloatingTranscriptView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FloatingTranscriptView.swift; sourceTree = "<group>"; };
 		624287DEA4E81D4346FB553C /* AzureSpeechProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AzureSpeechProvider.swift; sourceTree = "<group>"; };
+		62C6D0978F54936D9427AC92 /* GPTRealtimeWhisperSpeechProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GPTRealtimeWhisperSpeechProvider.swift; sourceTree = "<group>"; };
 		7043DCEF3ABA598F58E7EFF5 /* WhisperSpeechProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperSpeechProvider.swift; sourceTree = "<group>"; };
 		729F8BDAEF6016D7125444FA /* TranscriptionRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionRecord.swift; sourceTree = "<group>"; };
 		76998A3FFCA3C2D9769BB5A8 /* GPT4oTranscribeSpeechProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GPT4oTranscribeSpeechProvider.swift; sourceTree = "<group>"; };
 		7A8F640A93C0A181DCF75BA5 /* SpeechRecognitionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechRecognitionManager.swift; sourceTree = "<group>"; };
 		8B84C205582E04AAC212A298 /* AzureOpenAIProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AzureOpenAIProvider.swift; sourceTree = "<group>"; };
-		9B99300C2996F04661E71B9C /* Pods-OpenTypeless.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-OpenTypeless.debug.xcconfig"; path = "Target Support Files/Pods-OpenTypeless/Pods-OpenTypeless.debug.xcconfig"; sourceTree = "<group>"; };
 		9C2CFE7329D163BD3344B469 /* OpenTypeless.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = OpenTypeless.entitlements; sourceTree = "<group>"; };
 		AB228A1483B43396C4029CE6 /* OpenTypeless-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "OpenTypeless-Bridging-Header.h"; sourceTree = "<group>"; };
 		AF76CB2479930C1E7CEE07A7 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
@@ -59,17 +57,6 @@
 		EC508C92D55F377C73C42108 /* Logger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Logger.swift; sourceTree = "<group>"; };
 		FAE28A5F20739EE69F990F30 /* Pods-OpenTypeless.release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "Pods-OpenTypeless.release.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
-
-/* Begin PBXFrameworksBuildPhase section */
-		893229326CD6387D68E379E9 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				EDDEBE5B45DA439703F2837A /* Pods_OpenTypeless.framework in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		450A7C7FA017980C98879D93 /* AI */ = {
@@ -87,8 +74,6 @@
 				5CA13D3C010E08A296D90B60 /* OpenTypeless */,
 				7737A3A4BB4835E1DCDF0DD4 /* Pods-OpenTypeless */,
 				E9C04359331FACD7E4739CE9 /* Products */,
-				81643608963E4FD635D6DA32 /* Pods */,
-				5F4626CBFE12136BABE6C38D /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -105,18 +90,12 @@
 			path = OpenTypeless;
 			sourceTree = "<group>";
 		};
-		5F4626CBFE12136BABE6C38D /* Frameworks */ = {
-			isa = PBXGroup;
-			children = (
-				341CFAFF5CF15A266802E372 /* Pods_OpenTypeless.framework */,
-			);
-			name = Frameworks;
-			sourceTree = "<group>";
-		};
 		5F668D223D1DA89A0DF5399C /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				F2EFC107468BDCB123CE42CB /* Accessibility */,
 				450A7C7FA017980C98879D93 /* AI */,
+				998F84E708CD6DB8CAA3C6AF /* Audio */,
 				A9D10F95FAF387D683EB26B5 /* Database */,
 				7A3213C9EB1F5F930A52BB82 /* Speech */,
 			);
@@ -157,6 +136,7 @@
 				28A3DD57A9A952DD46C73E99 /* AppleSpeechProvider.swift */,
 				624287DEA4E81D4346FB553C /* AzureSpeechProvider.swift */,
 				76998A3FFCA3C2D9769BB5A8 /* GPT4oTranscribeSpeechProvider.swift */,
+				62C6D0978F54936D9427AC92 /* GPTRealtimeWhisperSpeechProvider.swift */,
 				7043DCEF3ABA598F58E7EFF5 /* WhisperSpeechProvider.swift */,
 			);
 			path = Providers;
@@ -182,14 +162,11 @@
 			path = Speech;
 			sourceTree = "<group>";
 		};
-		81643608963E4FD635D6DA32 /* Pods */ = {
+		998F84E708CD6DB8CAA3C6AF /* Audio */ = {
 			isa = PBXGroup;
 			children = (
-				9B99300C2996F04661E71B9C /* Pods-OpenTypeless.debug.xcconfig */,
-				3A4FAE91D5589EBB4DB61D12 /* Pods-OpenTypeless.release.xcconfig */,
 			);
-			name = Pods;
-			path = Pods;
+			path = Audio;
 			sourceTree = "<group>";
 		};
 		A9D10F95FAF387D683EB26B5 /* Database */ = {
@@ -236,6 +213,13 @@
 			path = Views;
 			sourceTree = "<group>";
 		};
+		F2EFC107468BDCB123CE42CB /* Accessibility */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Accessibility;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -247,13 +231,14 @@
 				41071E7DEEDB4E448D9A68F7 /* Sources */,
 				53BE6899CF1BCE4D2D4DD15E /* Resources */,
 				3BC9B452ADC065A5636B0AAA /* [CP] Embed Pods Frameworks */,
-				893229326CD6387D68E379E9 /* Frameworks */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 			);
 			name = OpenTypeless;
+			packageProductDependencies = (
+			);
 			productName = OpenTypeless;
 			productReference = 0C152EF9B6F66F7308D0ECDA /* OpenTypeless.app */;
 			productType = "com.apple.product-type.application";
@@ -283,7 +268,6 @@
 			mainGroup = 4F219BC675784540A105291E;
 			minimizedProjectReferenceProxies = 1;
 			preferredProjectObjectVersion = 77;
-			productRefGroup = E9C04359331FACD7E4739CE9 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -310,11 +294,16 @@
 			files = (
 			);
 			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-OpenTypeless/Pods-OpenTypeless-frameworks-${CONFIGURATION}-input-files.xcfilelist",
+			);
+			inputPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-OpenTypeless/Pods-OpenTypeless-frameworks.sh",
+				"${BUILT_PRODUCTS_DIR}/MicrosoftCognitiveServicesSpeech.framework",
 			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-OpenTypeless/Pods-OpenTypeless-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/MicrosoftCognitiveServicesSpeech.framework",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -339,7 +328,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\"\n    exit 1\nfi\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -355,6 +344,7 @@
 				0ABBC1319ACC690D51BE79C6 /* AzureSpeechProvider.swift in Sources */,
 				D3C53EBA2E3591822AB346F1 /* FloatingTranscriptView.swift in Sources */,
 				D8963BA4377B8D3AC42973D2 /* GPT4oTranscribeSpeechProvider.swift in Sources */,
+				916D828873F4197CFE865C7E /* GPTRealtimeWhisperSpeechProvider.swift in Sources */,
 				190465B1D0FE1E67B84A03C0 /* HistoryDatabase.swift in Sources */,
 				8AEA0FA90ED8E5E9C182BE7C /* HotkeyManager.swift in Sources */,
 				621F8179FB9F15AE5C021BE4 /* KeyCombination.swift in Sources */,
@@ -374,17 +364,14 @@
 /* Begin XCBuildConfiguration section */
 		5F154BCF28B4387BBE69AA42 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 9B99300C2996F04661E71B9C /* Pods-OpenTypeless.debug.xcconfig */;
+			baseConfigurationReference = DE12F159A81376B3622768D6 /* Pods-OpenTypeless.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = OpenTypeless/Resources/OpenTypeless.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
 				INFOPLIST_FILE = OpenTypeless/Resources/Info.plist;
 				INFOPLIST_KEY_LSUIElement = YES;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/../Frameworks",
-				);
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = com.opentypeless.app;
 				SDKROOT = macosx;
 				SWIFT_OBJC_BRIDGING_HEADER = "OpenTypeless/Resources/OpenTypeless-Bridging-Header.h";
@@ -459,17 +446,14 @@
 		};
 		9C1E9EC04F4BF521649829E7 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 3A4FAE91D5589EBB4DB61D12 /* Pods-OpenTypeless.release.xcconfig */;
+			baseConfigurationReference = FAE28A5F20739EE69F990F30 /* Pods-OpenTypeless.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = OpenTypeless/Resources/OpenTypeless.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
 				INFOPLIST_FILE = OpenTypeless/Resources/Info.plist;
 				INFOPLIST_KEY_LSUIElement = YES;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/../Frameworks",
-				);
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = com.opentypeless.app;
 				SDKROOT = macosx;
 				SWIFT_OBJC_BRIDGING_HEADER = "OpenTypeless/Resources/OpenTypeless-Bridging-Header.h";

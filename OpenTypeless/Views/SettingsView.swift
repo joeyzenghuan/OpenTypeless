@@ -201,6 +201,11 @@ struct SpeechProviderSettingsView: View {
     @AppStorage("gpt4oTranscribePrompt") private var gpt4oTranscribePrompt = ""
     @AppStorage("gpt4oTranscribeLogprobs") private var gpt4oTranscribeLogprobs = false
     @AppStorage("gpt4oTranscribeLanguage") private var gpt4oTranscribeLanguage = ""
+    @AppStorage("gptRealtimeWhisperEndpoint") private var gptRealtimeWhisperEndpoint = ""
+    @AppStorage("gptRealtimeWhisperDeployment") private var gptRealtimeWhisperDeployment = "gpt-realtime-whisper-globalstandard"
+    @AppStorage("gptRealtimeWhisperAPIKey") private var gptRealtimeWhisperAPIKey = ""
+    @AppStorage("gptRealtimeWhisperLanguage") private var gptRealtimeWhisperLanguage = ""
+    @AppStorage("gptRealtimeWhisperPrompt") private var gptRealtimeWhisperPrompt = ""
 
     var body: some View {
         Form {
@@ -210,6 +215,11 @@ struct SpeechProviderSettingsView: View {
                         Image(systemName: "brain.head.profile")
                         Text("GPT-4o Transcribe (推荐)")
                     }.tag("gpt4o-transcribe")
+
+                    HStack {
+                        Image(systemName: "dot.radiowaves.left.and.right")
+                        Text("GPT Realtime Whisper")
+                    }.tag("gpt-realtime-whisper")
 
                     HStack {
                         Image(systemName: "cloud")
@@ -257,6 +267,13 @@ struct SpeechProviderSettingsView: View {
                         title: "GPT-4o Transcribe",
                         description: "比 Whisper 更高精度的转写模型。支持可选的置信度评分（logprobs）和提示词引导。需要 Azure OpenAI 资源并部署 gpt-4o-transcribe 模型。",
                         color: .indigo
+                    )
+                case "gpt-realtime-whisper":
+                    ProviderInfoBox(
+                        icon: "dot.radiowaves.left.and.right",
+                        title: "GPT Realtime Whisper",
+                        description: "Azure OpenAI 实时流式转写。按住快捷键说话时持续输出结果，支持语言提示和转写提示词。需要部署 gpt-realtime-whisper 模型。",
+                        color: .orange
                     )
                 default:
                     EmptyView()
@@ -372,6 +389,55 @@ struct SpeechProviderSettingsView: View {
 
                     Link("Azure OpenAI 文档",
                          destination: URL(string: "https://learn.microsoft.com/azure/ai-services/openai/whisper-quickstart")!)
+                        .font(.caption)
+                }
+            }
+
+            // GPT Realtime Whisper Settings
+            if speechProvider == "gpt-realtime-whisper" {
+                Section("GPT Realtime Whisper 设置") {
+                    TextField("Endpoint URL", text: $gptRealtimeWhisperEndpoint)
+                        .textFieldStyle(.roundedBorder)
+
+                    Text("例如: https://your-resource.cognitiveservices.azure.com")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    TextField("Deployment Name", text: $gptRealtimeWhisperDeployment)
+                        .textFieldStyle(.roundedBorder)
+
+                    Text("GPT Realtime Whisper 模型的部署名称，例如: gpt-realtime-whisper-globalstandard")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    SecureField("API Key", text: $gptRealtimeWhisperAPIKey)
+                        .textFieldStyle(.roundedBorder)
+
+                    Picker("Language", selection: $gptRealtimeWhisperLanguage) {
+                        Text("跟随全局设置").tag("")
+                        ForEach(SupportedLanguage.allCases, id: \.rawValue) { lang in
+                            Text(lang.displayName).tag(lang.rawValue)
+                        }
+                    }
+
+                    Text("可选。不设置时使用全局语音语言设置。")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("转写提示词 (Prompt)")
+                        TextEditor(text: $gptRealtimeWhisperPrompt)
+                            .font(.system(size: 12, design: .monospaced))
+                            .frame(minHeight: 80)
+                            .border(Color.gray.opacity(0.3))
+                    }
+
+                    Text("可选。会作为 realtime transcription prompt 发送，用于术语、上下文和输出风格引导。")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    Link("Azure OpenAI Realtime 文档",
+                         destination: URL(string: "https://learn.microsoft.com/azure/ai-foundry/openai/how-to/realtime-audio")!)
                         .font(.caption)
                 }
             }

@@ -238,6 +238,17 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 didFallback = true
                 fallbackFrom = "GPT-4o Transcribe"
             }
+        case "gpt-realtime-whisper":
+            log.info("Using GPT Realtime Whisper", tag: "App")
+            let provider = GPTRealtimeWhisperSpeechProvider()
+            if provider.isAvailable {
+                speechProvider = provider
+            } else {
+                log.info("GPT Realtime Whisper not configured, falling back to Apple Speech", tag: "App")
+                speechProvider = AppleSpeechProvider()
+                didFallback = true
+                fallbackFrom = "GPT Realtime Whisper"
+            }
         default:
             log.info("Using Apple Speech Framework", tag: "App")
             speechProvider = AppleSpeechProvider()
