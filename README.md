@@ -4,7 +4,7 @@
   <img src="https://img.shields.io/badge/platform-macOS_13.0+-blue" alt="Platform">
   <img src="https://img.shields.io/badge/swift-5.9+-orange" alt="Swift">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
-  <img src="https://img.shields.io/badge/version-0.1.0-brightgreen" alt="Version">
+  <img src="https://img.shields.io/badge/version-0.3.0-brightgreen" alt="Version">
 </p>
 
 <p align="center">
@@ -61,6 +61,20 @@ OpenTypeless 通过模拟键盘粘贴（Cmd+V）来插入文字，需要辅助�
 | Azure Speech Service | ✅ | ❌ | 高精度、实时流式、100+ 语言，需 Azure 订阅 |
 | Azure OpenAI Whisper | ❌ | ❌ | 高精度多语言，录音结束后整段转写，需部署 Whisper 模型 |
 | GPT-4o Transcribe | ❌ | ❌ | 比 Whisper 更高精度，支持置信度评分和提示词引导（推荐） |
+
+### Azure 标准识别与最终精修
+
+事件格式、两秒停顿示例、双行 UI 和最终粘贴规则详见[识别事件笔记](docs/azure-speech-recognition-events.md)。
+
+Azure 标准模式和 Post-stream refinement 模式均通过 `Recognizing` 返回可变化的中间文本，通过 `Recognized` 返回每个语音段的最终文本。浮窗在两种模式下都上下展示：上方保留各段最后一次实时预览，下方累积最终结果；标准模式标记「Azure 标准识别」，Post 模式标记「Azure 精修」。句间停顿可能结束一个语音段，但不会结束整次录音；`SessionStopped` 才代表会话结束。标准最终结果也可能修正中间识别并添加标点，Post 则额外运行第二遍识别，替换每段的最终结果，不增加第三类精修回调。两种模式的最终文本可能相同。
+
+Azure Speech 默认开启 **最终精修（Post-stream refinement）**，使用当前识别语言的单语言模式。说话时显示低延迟的“实时预览”，Azure 利用更完整的音频上下文做第二遍识别，通过每段的最终结果返回精修文本。浮窗分开显示两阶段内容，历史记录提供“精修对照”。短句的精修结果可能与预览一致。
+
+松开快捷键后，应用等待最终结果和识别会话结束，立即发起粘贴；历史记录在粘贴后保存，浮窗继续展示 1.5 秒，不阻塞文本插入。开启精修时，若缺少最终结果、等待超时或服务连接异常，则保留已精修段的最终文本，未完成的段使用已有中间识别文本，浮窗和历史均标记「未完整精修」。降级内容可能不完整，请检查后使用。用户取消、配置错误或没有可用文字时不输出。成功精修后可继续 AI 润色；降级时跳过 AI 润色，立即保留文字。辅助功能权限未生效时也会写入剪贴板，并提示手动粘贴。此功能使用 Speech 服务，无需另配 Azure OpenAI。
+
+需要受支持的区域及语言，例如 `swedencentral` + `zh-CN`。配置不受支持时会提示错误；可在语音设置关闭精修，使用标准识别。支持列表参见 [微软文档](https://learn.microsoft.com/azure/ai-services/speech-service/how-to-recognize-speech#post-stream-refinement)。本项目要求 Speech SDK **1.51.2+（1.51.x）**；升级已有工作区时运行 `pod update MicrosoftCognitiveServicesSpeech-macOS`，然后打开 `.xcworkspace`。
+
+运行 `./scripts/test-azure-refinement.sh` 可验证延迟最终结果、音频时间偏移、多段拼接、精修失败降级、取消/配置错误时阻止输出，以及历史数据库迁移。测试使用临时数据库，不需要 Azure Key，也不修改剪贴板。Azure 回调日志记录事件原因、时间偏移、段落状态及降级原因，便于区分服务未返回最终结果与 App 合并问题。
 
 ## AI 润色引擎
 

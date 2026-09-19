@@ -4,7 +4,7 @@
   <img src="https://img.shields.io/badge/platform-macOS_13.0+-blue" alt="Platform">
   <img src="https://img.shields.io/badge/swift-5.9+-orange" alt="Swift">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
-  <img src="https://img.shields.io/badge/version-0.1.0-brightgreen" alt="Version">
+  <img src="https://img.shields.io/badge/version-0.3.0-brightgreen" alt="Version">
 </p>
 
 <p align="center">
@@ -61,6 +61,14 @@ OpenTypeless inserts text by simulating keyboard paste (Cmd+V), which requires A
 | Azure Speech Service | ✅ | ❌ | High accuracy, real-time streaming, 100+ languages, requires Azure subscription |
 | Azure OpenAI Whisper | ❌ | ❌ | High accuracy multilingual, sends complete audio after recording, requires Whisper model deployment |
 | GPT-4o Transcribe | ❌ | ❌ | Higher accuracy than Whisper, supports confidence scores and prompt guidance (recommended) |
+
+### Azure Standard Recognition and Post-stream Refinement
+
+Both modes show live previews above segment-final results. Standard mode uses Azure's standard final text; the default-enabled Post-stream refinement option replaces each segment's final text with a second recognition pass. Both use the same `Recognizing` and `Recognized` events. Short phrases may produce identical results.
+
+After recording stops and finalization completes, the app requests paste immediately; the panel remains visible for 1.5 seconds without delaying insertion. If Post refinement is incomplete or encounters a recoverable failure, the app keeps completed finals and uses available previews for unfinished segments, labels the output as incompletely refined, and skips optional AI polish. Recovered text may be incomplete. Cancellation and configuration errors do not produce output. If Accessibility permission is unavailable, text is still copied for manual paste.
+
+Post refinement requires a supported region and language, such as `swedencentral` and `zh-CN`, and Speech SDK 1.51.2+ within the 1.51.x series. Run `pod install` and build the `.xcworkspace`. See the [recognition event notes (Chinese)](docs/azure-speech-recognition-events.md) for payload examples, pauses between sentences, UI behavior, and clipboard rules. Run `./scripts/test-azure-refinement.sh` for offline regression checks.
 
 ## AI Polish Engines
 

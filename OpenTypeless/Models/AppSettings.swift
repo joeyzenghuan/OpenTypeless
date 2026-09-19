@@ -19,7 +19,8 @@ class AppSettings: ObservableObject {
 
     // Azure Speech
     @AppStorage("azureSpeechKey") var azureSpeechKey: String = ""
-    @AppStorage("azureSpeechRegion") var azureSpeechRegion: String = "eastasia"
+    @AppStorage("azureSpeechRegion") var azureSpeechRegion: String = "swedencentral"
+    @AppStorage("azureSpeechPostRefinementEnabled") var azureSpeechPostRefinementEnabled: Bool = true
 
     // Whisper (Azure OpenAI)
     @AppStorage("whisperEndpoint") var whisperEndpoint: String = ""
@@ -127,7 +128,8 @@ class AppSettings: ObservableObject {
         speechProvider = "apple"
         speechLanguage = "zh-CN"
         azureSpeechKey = ""
-        azureSpeechRegion = "eastasia"
+        azureSpeechRegion = "swedencentral"
+        azureSpeechPostRefinementEnabled = true
         whisperEndpoint = ""
         whisperDeployment = "whisper"
         whisperAPIKey = ""

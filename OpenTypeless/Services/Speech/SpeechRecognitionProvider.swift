@@ -3,9 +3,24 @@ import Foundation
 /// Speech recognition result
 struct SpeechRecognitionResult {
     let text: String
+    /// The event finalized a segment; continuous recognition can still produce more segments.
     let isFinal: Bool
     let confidence: Float?
     let language: String?
+    var stages: SpeechRecognitionStages? = nil
+}
+
+/// Both standard Azure recognition and PostRefinement have previews and segment finals.
+struct SpeechRecognitionStages {
+    let previewText: String
+    let finalText: String
+    let postRefinementEnabled: Bool
+}
+
+/// A recoverable Azure failure. Output may include previews and must not be labelled refined.
+struct SpeechRefinementFallback {
+    let reason: String
+    let refinedText: String
 }
 
 /// Protocol for speech recognition providers
@@ -23,6 +38,11 @@ protocol SpeechRecognitionProvider {
     /// Whether this provider can work offline
     var supportsOffline: Bool { get }
 
+    var usesPostStreamRefinement: Bool { get }
+    var supportsRecognitionStages: Bool { get }
+    var lastRefinementPreview: String? { get }
+    var lastRefinementFallback: SpeechRefinementFallback? { get }
+
     /// Whether the provider is currently available (e.g., has valid API key)
     var isAvailable: Bool { get }
 
@@ -35,8 +55,7 @@ protocol SpeechRecognitionProvider {
     /// - Parameter language: BCP-47 language code (e.g., "en-US", "zh-CN")
     func startRecognition(language: String) async throws
 
-    /// Stop speech recognition and return final result
-    /// - Returns: Final transcription text
+    /// Stop and return output text. Inspect lastRefinementFallback for recovered Azure previews.
     func stopRecognition() async throws -> String
 
     /// Cancel ongoing recognition without returning result
@@ -60,6 +79,10 @@ protocol SpeechRecognitionProvider {
 
 // Default implementations
 extension SpeechRecognitionProvider {
+    var usesPostStreamRefinement: Bool { false }
+    var supportsRecognitionStages: Bool { false }
+    var lastRefinementPreview: String? { nil }
+    var lastRefinementFallback: SpeechRefinementFallback? { nil }
     var lastAudioFilePath: String? { nil }
     func beginCapture(language: String) throws {
         // Default no-op; providers that need synchronous start override this

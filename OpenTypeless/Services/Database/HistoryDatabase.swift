@@ -8,8 +8,8 @@ class HistoryDatabase {
     private let log = Logger.shared
     private var db: OpaquePointer?
 
-    private init() {
-        openDatabase()
+    init(databaseURL: URL? = nil) {
+        openDatabase(databaseURL: databaseURL)
         createTableIfNeeded()
     }
 
@@ -21,15 +21,15 @@ class HistoryDatabase {
 
     // MARK: - Setup
 
-    private func openDatabase() {
+    private func openDatabase(databaseURL: URL?) {
         let fileManager = FileManager.default
-        let appSupportDir = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        let appSupportDir = databaseURL?.deletingLastPathComponent() ?? fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
             .appendingPathComponent("OpenTypeless", isDirectory: true)
 
         // Create directory if needed
         try? fileManager.createDirectory(at: appSupportDir, withIntermediateDirectories: true)
 
-        let dbPath = appSupportDir.appendingPathComponent("history.sqlite").path
+        let dbPath = databaseURL?.path ?? appSupportDir.appendingPathComponent("history.sqlite").path
 
         if sqlite3_open(dbPath, &db) != SQLITE_OK {
             let errmsg = db.flatMap { String(cString: sqlite3_errmsg($0)) } ?? "unknown"
@@ -61,6 +61,17 @@ class HistoryDatabase {
         );
         """
         execute(sql)
+        // Additive migration: existing records keep NULL (no refinement metadata).
+        var statement: OpaquePointer?
+        if sqlite3_prepare_v2(db, "PRAGMA table_info(transcription_records);", -1, &statement, nil) == SQLITE_OK {
+            var columns = Set<String>()
+            while sqlite3_step(statement) == SQLITE_ROW {
+                if let name = columnText(statement, 1) { columns.insert(name) }
+            }
+            sqlite3_finalize(statement)
+            if !columns.contains("streaming_preview_text") { execute("ALTER TABLE transcription_records ADD COLUMN streaming_preview_text TEXT;") }
+            if !columns.contains("refinement_fallback_reason") { execute("ALTER TABLE transcription_records ADD COLUMN refinement_fallback_reason TEXT;") }
+        }
     }
 
     // MARK: - Insert
@@ -71,8 +82,8 @@ class HistoryDatabase {
             id, created_at, language,
             recording_duration_ms, audio_file_path,
             stt_provider_id, stt_provider_name, original_text, transcription_duration_ms,
-            ai_provider_name, ai_model_name, polished_text, polish_duration_ms
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+            ai_provider_name, ai_model_name, polished_text, polish_duration_ms, streaming_preview_text, refinement_fallback_reason
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
         """
 
         var stmt: OpaquePointer?
@@ -95,6 +106,8 @@ class HistoryDatabase {
         bindOptionalText(stmt, index: 11, value: record.aiModelName)
         bindOptionalText(stmt, index: 12, value: record.polishedText)
         bindOptionalInt(stmt, index: 13, value: record.polishDurationMs)
+        bindOptionalText(stmt, index: 14, value: record.streamingPreviewText)
+        bindOptionalText(stmt, index: 15, value: record.refinementFallbackReason)
 
         if sqlite3_step(stmt) != SQLITE_DONE {
             logError("insertRecord step")
@@ -256,7 +269,9 @@ class HistoryDatabase {
             aiProviderName: aiProviderName,
             aiModelName: aiModelName,
             polishedText: polishedText,
-            polishDurationMs: polishDurationMs
+            polishDurationMs: polishDurationMs,
+            streamingPreviewText: columnText(stmt, 13),
+            refinementFallbackReason: columnText(stmt, 14)
         )
     }
 

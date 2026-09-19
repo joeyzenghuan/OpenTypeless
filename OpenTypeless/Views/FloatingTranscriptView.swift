@@ -13,6 +13,14 @@ class FloatingPanelController: NSObject, ObservableObject {
     @Published var statusMessage: String = "准备就绪"
     @Published var providerName: String = ""
     @Published var fallbackWarning: String? = nil
+    @Published var refinementEnabled = false
+    @Published var showsRecognitionStages = false
+    @Published var previewText = ""
+    @Published var recognizedText = ""
+    @Published var finalOutputText: String? = nil
+    @Published var hasError = false
+    @Published var refinementFallbackReason: String? = nil
+    private var hideWorkItem: DispatchWorkItem?
 
     /// Called when the user taps the close/cancel button
     var onCancel: (() -> Void)?
@@ -24,13 +32,22 @@ class FloatingPanelController: NSObject, ObservableObject {
         log.debug("Initialized", tag: "FloatingPanel")
     }
 
-    func showPanel() {
+    func showPanel(refinementEnabled: Bool = false, showsRecognitionStages: Bool = false) {
         log.debug("Showing panel...", tag: "FloatingPanel")
 
         DispatchQueue.main.async {
+            self.hideWorkItem?.cancel()
+            self.refinementEnabled = refinementEnabled
+            self.showsRecognitionStages = showsRecognitionStages || refinementEnabled
+            self.previewText = ""
+            self.recognizedText = ""
+            self.finalOutputText = nil
+            self.hasError = false
+            self.refinementFallbackReason = nil
             if self.panel == nil {
                 self.createPanel()
             }
+            self.panel?.setContentSize(NSSize(width: self.showsRecognitionStages ? 560 : 520, height: self.showsRecognitionStages ? 360 : 200))
 
             self.isVisible = true
             self.isRecording = true
@@ -49,6 +66,7 @@ class FloatingPanelController: NSObject, ObservableObject {
         log.debug("Hiding panel...", tag: "FloatingPanel")
 
         DispatchQueue.main.async {
+            self.hideWorkItem?.cancel()
             self.isVisible = false
             self.isRecording = false
             self.isProcessing = false
@@ -57,16 +75,24 @@ class FloatingPanelController: NSObject, ObservableObject {
         }
     }
 
-    func updateTranscription(_ text: String) {
+    func updateTranscription(_ result: SpeechRecognitionResult) {
         DispatchQueue.main.async {
-            self.transcription = text
-            self.statusMessage = text.isEmpty ? "正在听..." : "识别中..."
-            self.log.debug("Transcription updated: \(text)", tag: "FloatingPanel")
+            guard self.isVisible, !self.hasError, self.finalOutputText == nil else { return }
+            self.transcription = result.text
+            if let stages = result.stages {
+                self.previewText = stages.previewText
+                self.recognizedText = stages.finalText
+                self.refinementEnabled = stages.postRefinementEnabled
+            }
+            if self.isRecording {
+                self.statusMessage = self.refinementEnabled ? "正在听 · 分段精修中" : "识别中..."
+            }
         }
     }
 
     func showStatus(_ message: String) {
         DispatchQueue.main.async {
+            guard !self.hasError, self.finalOutputText == nil else { return }
             self.statusMessage = message
             self.log.debug("Status updated: \(message)", tag: "FloatingPanel")
         }
@@ -83,30 +109,44 @@ class FloatingPanelController: NSObject, ObservableObject {
         }
     }
 
-    func showResult(_ text: String) {
+    func showResult(_ text: String, fallback: SpeechRefinementFallback? = nil, copiedOnly: Bool = false) {
         DispatchQueue.main.async {
             self.transcription = text
-            self.statusMessage = "完成"
+            self.finalOutputText = text
+            self.refinementFallbackReason = fallback?.reason
+            if let fallback { self.recognizedText = fallback.refinedText }
+            self.hasError = false
+            self.statusMessage = fallback != nil
+                ? (copiedOnly ? "精修未完成 · 已复制，请手动粘贴" : "精修未完成 · 已使用识别文本")
+                : (copiedOnly ? "已复制，请手动粘贴" : "完成")
             self.isRecording = false
             self.isProcessing = false
 
             // Auto-hide after a delay
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                self.hidePanel()
-            }
+            self.scheduleHide(after: 1.5)
         }
     }
 
     func showError(_ message: String) {
         DispatchQueue.main.async {
+            self.hasError = true
             self.statusMessage = "错误: \(message)"
             self.isRecording = false
             self.isProcessing = false
 
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                self.hidePanel()
-            }
+            self.scheduleHide(after: 2.0)
         }
+    }
+
+    func showRecognizedResult(_ text: String) {
+        DispatchQueue.main.async { self.recognizedText = text }
+    }
+
+    private func scheduleHide(after delay: TimeInterval) {
+        hideWorkItem?.cancel()
+        let item = DispatchWorkItem { [weak self] in self?.hidePanel() }
+        hideWorkItem = item
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: item)
     }
 
     /// Called when user clicks the close button
@@ -196,8 +236,9 @@ struct FloatingTranscriptView: View {
                         .font(.headline)
                         .foregroundColor(.orange)
                 } else {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundColor(.green)
+                    Image(systemName: controller.hasError ? "exclamationmark.circle.fill" :
+                            (controller.refinementFallbackReason != nil ? "exclamationmark.triangle.fill" : "checkmark.circle.fill"))
+                        .foregroundColor(controller.hasError ? .red : (controller.refinementFallbackReason != nil ? .orange : .green))
                     Text(controller.statusMessage)
                         .font(.headline)
                         .foregroundColor(.white)
@@ -242,7 +283,9 @@ struct FloatingTranscriptView: View {
             }
 
             // Transcription text - full width with word wrap
-            if !controller.transcription.isEmpty {
+            if controller.showsRecognitionStages {
+                recognitionComparison
+            } else if !controller.transcription.isEmpty {
                 ScrollView(.vertical, showsIndicators: true) {
                     Text(controller.transcription)
                         .font(.system(size: 16))
@@ -275,7 +318,62 @@ struct FloatingTranscriptView: View {
             RoundedRectangle(cornerRadius: 12)
                 .fill(Color.black.opacity(0.9))
         )
-        .frame(width: 500, height: 180)
+        .frame(width: controller.showsRecognitionStages ? 540 : 500, height: controller.showsRecognitionStages ? 340 : 180)
+    }
+
+    private var recognitionComparison: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            transcriptSection(title: "实时预览 · 中间结果", text: controller.previewText,
+                              placeholder: "说话时显示，文字可能变化", color: .white.opacity(0.6))
+            Divider().overlay(Color.white.opacity(0.2))
+            if controller.refinementFallbackReason != nil {
+                transcriptSection(title: "本次输出 · 未完整精修", text: controller.finalOutputText ?? "",
+                                  placeholder: "", color: .orange)
+            } else {
+                transcriptSection(title: controller.refinementEnabled ? "Azure 精修 · 最终结果" : "Azure 标准识别 · 最终结果",
+                                  text: controller.recognizedText,
+                                  placeholder: controller.hasError ? "未获得完整最终结果" :
+                                    (controller.refinementEnabled ? "等待 Azure 返回精修结果…" : "等待 Azure 返回本段最终识别结果…"),
+                                  color: .green)
+            }
+            if controller.refinementFallbackReason == nil, let output = controller.finalOutputText, output != controller.recognizedText {
+                transcriptSection(title: "AI 润色 · 最终输出", text: output, placeholder: "", color: .orange)
+            }
+            Text(comparisonExplanation)
+                .font(.caption2)
+                .foregroundColor(.white.opacity(0.6))
+        }
+    }
+
+    private var comparisonExplanation: String {
+        if let reason = controller.refinementFallbackReason {
+            return "\(reason)；已保留可用识别文本，请检查内容是否完整。"
+        }
+        if controller.hasError { return "本次未输出识别文本" }
+        if controller.finalOutputText == nil {
+            return controller.refinementEnabled
+                ? "分段精修；整次录音结束后粘贴，精修失败时使用已识别文本"
+                : "每段结束后返回最终结果；整次录音结束后粘贴"
+        }
+        let stage = controller.refinementEnabled ? "精修完成" : "标准识别完成"
+        return controller.previewText == controller.recognizedText
+            ? "\(stage) · 与预览一致" : "\(stage) · 使用最终结果输出"
+    }
+
+    private func transcriptSection(title: String, text: String, placeholder: String, color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Label(title, systemImage: title.hasPrefix("实时") ? "waveform" : "sparkles")
+                .font(.caption.weight(.semibold))
+                .foregroundColor(color)
+            ScrollView {
+                Text(text.isEmpty ? placeholder : text)
+                    .font(.system(size: 15))
+                    .foregroundColor(text.isEmpty ? .white.opacity(0.4) : .white.opacity(0.95))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, minHeight: 32, maxHeight: 70)
+        }
     }
 }
 

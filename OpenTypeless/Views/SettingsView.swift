@@ -191,6 +191,8 @@ struct SpeechProviderSettingsView: View {
     @AppStorage("speechProvider") private var speechProvider = "apple"
     @AppStorage("azureSpeechKey") private var azureSpeechKey = ""
     @AppStorage("azureSpeechRegion") private var azureSpeechRegion = "swedencentral"
+    @AppStorage("azureSpeechPostRefinementEnabled") private var azureSpeechPostRefinementEnabled = true
+    @AppStorage("speechLanguage") private var speechLanguage = "zh-CN"
     @AppStorage("whisperEndpoint") private var whisperEndpoint = ""
     @AppStorage("whisperDeployment") private var whisperDeployment = "whisper"
     @AppStorage("whisperAPIKey") private var whisperAPIKey = ""
@@ -286,6 +288,23 @@ struct SpeechProviderSettingsView: View {
                     SecureField("API Key", text: $azureSpeechKey)
                     TextField("Region", text: $azureSpeechRegion)
                         .textFieldStyle(.roundedBorder)
+
+                    Toggle("最终精修（Post-stream refinement）", isOn: $azureSpeechPostRefinementEnabled)
+                    Text("实时预览保持低延迟；Azure 利用更完整的音频上下文进行第二遍识别。精修完成后立即粘贴；缺少精修结果、超时或服务连接异常时，使用已有识别文本，并标记「未完整精修」。")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Text("使用当前识别语言的单语言精修。长句通常更受益，短句可能没有变化。独立于「AI 润色」；同时开启时，AI 会继续处理成功精修后的文本。精修失败时直接输出已有文字，不再等待 AI 润色。")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    if azureSpeechPostRefinementEnabled,
+                       let issue = AzureSpeechRefinement.configurationIssue(region: azureSpeechRegion, language: speechLanguage) {
+                        Label(issue, systemImage: "exclamationmark.triangle")
+                            .font(.caption)
+                            .foregroundColor(.orange)
+                    }
+                    Link("查看精修支持的区域与语言",
+                         destination: URL(string: "https://learn.microsoft.com/azure/ai-services/speech-service/how-to-recognize-speech#post-stream-refinement")!)
+                        .font(.caption)
 
                     Link("获取 Azure Speech API Key",
                          destination: URL(string: "https://azure.microsoft.com/products/cognitive-services/speech-services")!)
