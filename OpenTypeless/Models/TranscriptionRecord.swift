@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 
 /// A single transcription record in history
 struct TranscriptionRecord: Identifiable {
@@ -21,6 +22,10 @@ struct TranscriptionRecord: Identifiable {
     let aiModelName: String?
     let polishedText: String?
     let polishDurationMs: Int?
+    /// Non-nil only for Azure post-stream refinement. Empty means no preview was received.
+    var streamingPreviewText: String? = nil
+    /// Non-nil when Azure refinement failed and available recognition text was used instead.
+    var refinementFallbackReason: String? = nil
 
     /// The text to display (polished if available, otherwise original)
     var displayText: String {

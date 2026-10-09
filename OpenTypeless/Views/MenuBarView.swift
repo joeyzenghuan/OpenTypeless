@@ -356,11 +356,40 @@ struct HistoryRecordRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
+            if let reason = record.refinementFallbackReason {
+                Label("精修未完成 · 已使用识别文本", systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption2)
+                    .foregroundColor(.orange)
+                    .help(reason)
+            } else if record.streamingPreviewText != nil {
+                Label(record.polishedText == nil ? "Azure 精修结果" : "精修后 · AI 润色结果", systemImage: "sparkles")
+                    .font(.caption2)
+                    .foregroundColor(.green)
+            }
             Text(record.displayText)
                 .font(.system(size: 12))
                 .lineLimit(3)
 
-            if showOriginal, record.polishedText != nil {
+            if showOriginal, let preview = record.streamingPreviewText {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("实时预览 · 中间结果")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                    Text(preview.isEmpty ? "本次未返回实时预览" : preview)
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                    Text(record.refinementFallbackReason != nil ? "本次输出 · 未完整精修" :
+                            (preview == record.originalText ? "Azure 精修 · 与预览一致" : "Azure 精修 · 最终识别结果"))
+                        .font(.caption2)
+                        .foregroundColor(record.refinementFallbackReason != nil ? .orange : .green)
+                    Text(record.originalText)
+                        .font(.system(size: 11))
+                        .textSelection(.enabled)
+                    if let reason = record.refinementFallbackReason {
+                        Text(reason).font(.caption2).foregroundColor(.orange)
+                    }
+                }
+            } else if showOriginal, record.polishedText != nil {
                 HStack(alignment: .top, spacing: 4) {
                     Text("原文")
                         .font(.system(size: 9))
@@ -376,13 +405,13 @@ struct HistoryRecordRow: View {
                 Text(record.formattedTime)
                 Text("·")
                 Text(record.sttProviderName)
-                if record.polishedText != nil {
+                if record.polishedText != nil || record.streamingPreviewText != nil {
                     Text("·")
                     Button(action: {
                         showOriginal.toggle()
                     }) {
-                        Image(systemName: "sparkles")
-                            .font(.system(size: 9))
+                        Label(record.streamingPreviewText != nil ? "精修对照" : "原文", systemImage: "sparkles")
+                            .font(.system(size: 10))
                             .foregroundColor(showOriginal ? .orange : .secondary)
                     }
                     .buttonStyle(.plain)

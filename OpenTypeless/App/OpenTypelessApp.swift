@@ -30,6 +30,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     /// Active AI task that can be cancelled from the close button
     private var activeAITask: Task<Void, Never>?
+    private var recognitionStartTask: Task<Void, Error>?
+    private var voiceSessionID: UUID?
+    private var isStoppingVoiceInput = false
+    private var voiceUsesPostRefinement = false
 
     private let log = Logger.shared
 
@@ -208,7 +212,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         case "azure":
             log.info("Using Azure Speech Service", tag: "App")
             let azureProvider = AzureSpeechProvider()
-            if azureProvider.isAvailable {
+            // An explicitly requested refined result must not silently fall back to Apple.
+            if azureProvider.isAvailable || azureProvider.usesPostStreamRefinement {
                 speechProvider = azureProvider
             } else {
                 log.info("Azure Speech not configured, falling back to Apple Speech", tag: "App")
@@ -238,6 +243,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 didFallback = true
                 fallbackFrom = "GPT-4o Transcribe"
             }
+        case "mai-transcribe-2-streaming":
+            log.info("Using MAI Transcribe 2 Streaming", tag: "App")
+            speechProvider = MAITranscribeSpeechProvider()
+        case "mai-transcribe-2":
+            log.info("Using MAI Transcribe 2", tag: "App")
+            speechProvider = MAITranscribeBatchSpeechProvider()
         case "gpt-realtime-whisper":
             log.info("Using GPT Realtime Whisper", tag: "App")
             let provider = GPTRealtimeWhisperSpeechProvider()
@@ -260,21 +271,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             floatingPanel.fallbackWarning = "\(fallbackFrom) 未配置，已回退到 Apple Speech"
         } else {
             floatingPanel.fallbackWarning = nil
-        }
-
-        speechProvider?.onPartialResult { [weak self] result in
-            self?.log.debug("Partial result: \(result.text)", tag: "App")
-            self?.floatingPanel.updateTranscription(result.text)
-        }
-
-        speechProvider?.onError { [weak self] error in
-            self?.log.info("Speech recognition error: \(error.localizedDescription)", tag: "App")
-            self?.floatingPanel.showError(error.localizedDescription)
-        }
-
-        speechProvider?.onStatus { [weak self] message in
-            self?.log.info("Speech recognition status: \(message)", tag: "App")
-            self?.floatingPanel.showStatus(message)
         }
 
         // Setup AI provider
@@ -307,7 +303,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
             // Check for speech provider changes
             let current = UserDefaults.standard.string(forKey: "speechProvider") ?? "apple"
-            if current != self.speechProvider?.identifier {
+            if self.voiceSessionID == nil, current != self.speechProvider?.identifier {
                 self.log.info("Speech provider setting changed to: \(current), reinitializing...", tag: "App")
                 self.setupSpeechRecognition()
             }
@@ -331,17 +327,29 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private func startVoiceInput() {
         log.info("Starting voice input...", tag: "App")
 
-        // Clear any previous error/warning so it doesn't persist across attempts
-        floatingPanel.fallbackWarning = nil
+        // Keep one provider/session until its final result has been delivered.
+        guard voiceSessionID == nil else { return }
+        setupSpeechRecognition()
+        guard let provider = speechProvider else { return }
+        let sessionID = UUID()
+        voiceSessionID = sessionID
+        isStoppingVoiceInput = false
+        voiceUsesPostRefinement = provider.usesPostStreamRefinement
+        configureSpeechCallbacks(provider, sessionID: sessionID)
+        floatingPanel.onCancel = { [weak self] in self?.cancelVoiceInput() }
 
         recordingStartTime = Date()
         let language = UserDefaults.standard.string(forKey: "speechLanguage") ?? "zh-CN"
 
         // Begin audio capture synchronously BEFORE any UI work to minimize latency
         do {
-            try speechProvider?.beginCapture(language: language)
+            try provider.beginCapture(language: language)
         } catch {
             log.info("Failed to begin capture: \(error)", tag: "App")
+            cancelVoiceInput()
+            floatingPanel.showPanel(refinementEnabled: provider.usesPostStreamRefinement, showsRecognitionStages: provider.supportsRecognitionStages)
+            floatingPanel.showError(error.localizedDescription)
+            return
         }
 
         // Update menu bar icon (tint red when recording)
@@ -355,17 +363,18 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
 
         // Show floating panel
-        floatingPanel.showPanel()
+        floatingPanel.showPanel(refinementEnabled: provider.usesPostStreamRefinement, showsRecognitionStages: provider.supportsRecognitionStages)
 
-        // Complete async recognition setup
+        let startTask = Task { try await provider.startRecognition(language: language) }
+        recognitionStartTask = startTask
         Task {
             do {
-                log.info("Starting recognition with language: \(language)", tag: "App")
-                try await speechProvider?.startRecognition(language: language)
-                log.info("Speech recognition started", tag: "App")
+                try await startTask.value
             } catch {
-                log.info("Failed to start speech recognition: \(error)", tag: "App")
-                floatingPanel.showError(error.localizedDescription)
+                guard self.voiceSessionID == sessionID else { return }
+                self.cancelVoiceInput()
+                self.floatingPanel.showPanel(refinementEnabled: provider.usesPostStreamRefinement, showsRecognitionStages: provider.supportsRecognitionStages)
+                self.floatingPanel.showError(error.localizedDescription)
             }
         }
     }
@@ -373,6 +382,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private func stopVoiceInput() {
         log.info("Stopping voice input...", tag: "App")
 
+        guard let sessionID = voiceSessionID, let provider = speechProvider,
+              !isStoppingVoiceInput else { return }
+        isStoppingVoiceInput = true
+        let startTask = recognitionStartTask
+        let refinementEnabled = voiceUsesPostRefinement
         let recordingEndTime = Date()
         let recordingDurationMs = Int((recordingEndTime.timeIntervalSince(recordingStartTime ?? recordingEndTime)) * 1000)
 
@@ -389,29 +403,40 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         // Stop speech recognition and get result
         activeAITask = Task { [weak self] in
             guard let self = self else { return }
+            defer {
+                if self.voiceSessionID == sessionID {
+                    self.voiceSessionID = nil
+                    self.recognitionStartTask = nil
+                    self.activeAITask = nil
+                    self.isStoppingVoiceInput = false
+                }
+            }
 
             // Skip transcription if recording is too short (< 1 second) to avoid accidental triggers
             if recordingDurationMs < 1000 {
                 self.log.info("Recording too short (\(recordingDurationMs)ms < 1000ms), skipping transcription", tag: "App")
-                self.speechProvider?.cancelRecognition()
+                startTask?.cancel()
+                provider.cancelRecognition()
                 self.floatingPanel.hidePanel()
                 return
             }
 
             do {
-                // For non-realtime providers (GPT-4o Transcribe, Whisper), show processing
-                // state immediately since stopRecognition() sends audio to API and waits
-                let isRealtimeProvider = self.speechProvider?.supportsRealtime ?? true
-                if !isRealtimeProvider {
-                    self.floatingPanel.showProcessing(originalText: self.floatingPanel.transcription.isEmpty ? "正在处理音频..." : self.floatingPanel.transcription)
-                }
-
+                self.floatingPanel.showProcessing(
+                    originalText: self.floatingPanel.transcription,
+                    statusMessage: refinementEnabled ? "正在等待最终精修..." : "正在等待最终识别结果..."
+                )
+                try await startTask?.value
+                try Task.checkCancellation()
                 let sttStartTime = Date()
-                var result = try await self.speechProvider?.stopRecognition() ?? ""
+                var result = try await provider.stopRecognition()
+                let refinementFallback = provider.lastRefinementFallback
+                try Task.checkCancellation()
+                guard self.voiceSessionID == sessionID else { return }
                 let sttEndTime = Date()
                 let transcriptionDurationMs = Int(sttEndTime.timeIntervalSince(sttStartTime) * 1000)
 
-                self.log.info("Final transcription: \(result) (STT: \(transcriptionDurationMs)ms)", tag: "App")
+                self.log.info("Transcription output (fallback=\(refinementFallback != nil)): \(result) (STT: \(transcriptionDurationMs)ms)", tag: "App")
 
                 if result.isEmpty {
                     self.log.info("No transcription result", tag: "App")
@@ -421,9 +446,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
                 let originalText = result
                 let language = UserDefaults.standard.string(forKey: "speechLanguage") ?? "zh-CN"
-                let sttProviderId = self.speechProvider?.identifier ?? "unknown"
-                let sttProviderName = self.speechProvider?.name ?? "Unknown"
-                let audioFilePath = self.speechProvider?.lastAudioFilePath
+                let sttProviderId = provider.identifier
+                let sttProviderName = provider.name
+                let audioFilePath = provider.lastAudioFilePath
 
                 // AI polish metadata
                 var aiPolishResult: AIPolishResult?
@@ -431,7 +456,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 // Check if AI polish is enabled
                 let aiEnabled = UserDefaults.standard.bool(forKey: "aiPolishEnabled")
 
-                if aiEnabled {
+                // Recover immediately; a failed refinement must not trigger another model wait.
+                if aiEnabled, refinementFallback == nil {
+                    if provider.supportsRecognitionStages { self.floatingPanel.showRecognizedResult(result) }
                     self.log.info("AI polish enabled, processing...", tag: "App")
                     self.floatingPanel.showProcessing(originalText: result, statusMessage: "正在 AI 润色...")
 
@@ -477,6 +504,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                             result = polishResult.text
                             aiPolishResult = polishResult
                         } catch is CancellationError {
+                            guard self.voiceSessionID == sessionID else { return }
                             self.log.info("AI polish cancelled by user", tag: "App")
                             self.floatingPanel.hidePanel()
                             return
@@ -491,12 +519,29 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
                 // Check for cancellation before inserting text
                 guard !Task.isCancelled else {
+                    guard self.voiceSessionID == sessionID else { return }
                     self.log.info("Task cancelled, skipping text insertion", tag: "App")
                     self.floatingPanel.hidePanel()
                     return
                 }
 
-                // Save history record
+                // Deliver the complete output before UI presentation or database work.
+                // The panel's display timer must never delay the paste event.
+                let finalText = result
+                let delivered = await MainActor.run { () -> Bool in
+                    guard !Task.isCancelled, self.voiceSessionID == sessionID else { return false }
+                    let insertion = self.insertText(finalText)
+                    if insertion == .failed {
+                        self.floatingPanel.showError("无法写入剪贴板，请从历史记录复制")
+                    } else {
+                        if provider.supportsRecognitionStages, refinementFallback == nil { self.floatingPanel.showRecognizedResult(originalText) }
+                        self.floatingPanel.showResult(finalText, fallback: refinementFallback, copiedOnly: insertion == .copiedOnly)
+                    }
+                    return true
+                }
+                guard delivered else { return }
+
+                // Persist after delivery so loading/writing history cannot hold up typing.
                 let record = TranscriptionRecord(
                     id: UUID(),
                     createdAt: Date(),
@@ -510,78 +555,104 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                     aiProviderName: aiPolishResult != nil ? self.aiProvider?.name : nil,
                     aiModelName: aiPolishResult?.modelName,
                     polishedText: aiPolishResult?.text,
-                    polishDurationMs: aiPolishResult?.durationMs
+                    polishDurationMs: aiPolishResult?.durationMs,
+                    streamingPreviewText: provider.lastRefinementPreview,
+                    refinementFallbackReason: refinementFallback?.reason
                 )
                 await HistoryManager.shared.addRecord(record)
 
-                self.floatingPanel.showResult(result)
-                // Insert text at cursor position
-                await self.insertText(result)
-
             } catch is CancellationError {
+                guard self.voiceSessionID == sessionID else { return }
                 self.log.info("Voice input task cancelled", tag: "App")
                 self.floatingPanel.hidePanel()
             } catch SpeechRecognitionError.rateLimited {
+                guard self.voiceSessionID == sessionID else { return }
                 self.log.info("Whisper API rate limit reached (HTTP 429)", tag: "App")
                 self.floatingPanel.fallbackWarning = "Whisper API 请求频率超限，请稍后再试"
                 self.floatingPanel.showError("请求过于频繁，请稍等片刻后重试")
             } catch {
+                guard self.voiceSessionID == sessionID else { return }
                 self.log.info("Failed to stop speech recognition: \(error)", tag: "App")
                 self.floatingPanel.showError(error.localizedDescription)
             }
         }
 
-        // Register the cancel handler on the floating panel
-        floatingPanel.onCancel = { [weak self] in
-            self?.log.info("User cancelled via close button", tag: "App")
-            self?.activeAITask?.cancel()
-            self?.speechProvider?.cancelRecognition()
-            self?.floatingPanel.hidePanel()
-            // Reset menu bar icon
+    }
+
+    private func configureSpeechCallbacks(_ provider: any SpeechRecognitionProvider, sessionID: UUID) {
+        provider.onPartialResult { [weak self] result in
             DispatchQueue.main.async {
-                if let image = NSImage(named: "MenuBarIcon") {
-                    image.isTemplate = true
-                    image.size = NSSize(width: 18, height: 18)
-                    self?.statusItem.button?.image = image
-                }
-                self?.statusItem.button?.contentTintColor = nil
+                guard let self, self.voiceSessionID == sessionID else { return }
+                self.floatingPanel.updateTranscription(result)
+            }
+        }
+        provider.onError { [weak self] error in
+            DispatchQueue.main.async {
+                guard let self, self.voiceSessionID == sessionID else { return }
+                self.floatingPanel.showError(error.localizedDescription)
+            }
+        }
+        provider.onStatus { [weak self] message in
+            DispatchQueue.main.async {
+                guard let self, self.voiceSessionID == sessionID else { return }
+                // A late connection event must not restore the recording status after release.
+                if !self.isStoppingVoiceInput { self.floatingPanel.showStatus(message) }
             }
         }
     }
 
+    private func cancelVoiceInput() {
+        activeAITask?.cancel()
+        recognitionStartTask?.cancel()
+        speechProvider?.cancelRecognition()
+        voiceSessionID = nil
+        isStoppingVoiceInput = false
+        recognitionStartTask = nil
+        activeAITask = nil
+        floatingPanel.hidePanel()
+        statusItem.button?.contentTintColor = nil
+    }
+
     // MARK: - Text Insertion
 
+    private enum TextInsertionOutcome { case pasteRequested, copiedOnly, failed }
+
     @MainActor
-    private func insertText(_ text: String) async {
-        log.debug("Inserting text: \(text)", tag: "App")
+    private func insertText(_ text: String) -> TextInsertionOutcome {
+        guard !Task.isCancelled, !text.isEmpty else { return .failed }
+        log.debug("Inserting recognition output", tag: "App")
+
+        // Keep usable text on the clipboard even if macOS currently blocks automatic paste.
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        guard pasteboard.setString(text, forType: .string) else {
+            log.info("Cannot write recognition output to clipboard", tag: "App")
+            return .failed
+        }
 
         // Check accessibility permission
         guard AXIsProcessTrusted() else {
-            log.info("Cannot insert text - accessibility permission not granted", tag: "App")
-            return
+            log.info("Output copied; automatic paste blocked by accessibility permission", tag: "App")
+            return .copiedOnly
         }
 
         // Use keyboard simulation to insert text
         log.debug("Simulating keyboard input...", tag: "App")
 
-        // Copy text to clipboard
-        let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
-        pasteboard.setString(text, forType: .string)
-
         // Simulate Cmd+V to paste
         let source = CGEventSource(stateID: .hidSystemState)
 
         // Key down: Cmd+V
-        let keyDown = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: true) // V key
-        keyDown?.flags = .maskCommand
-        keyDown?.post(tap: .cghidEventTap)
+        guard let keyDown = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: true),
+              let keyUp = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: false) else {
+            return .copiedOnly
+        }
+        keyDown.flags = .maskCommand
+        keyUp.flags = .maskCommand
+        keyDown.post(tap: .cghidEventTap)
+        keyUp.post(tap: .cghidEventTap)
 
-        // Key up: Cmd+V
-        let keyUp = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: false)
-        keyUp?.flags = .maskCommand
-        keyUp?.post(tap: .cghidEventTap)
-
-        log.info("Text inserted via clipboard paste", tag: "App")
+        log.info("Clipboard paste requested", tag: "App")
+        return .pasteRequested
     }
 }

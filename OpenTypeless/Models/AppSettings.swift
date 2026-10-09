@@ -19,7 +19,8 @@ class AppSettings: ObservableObject {
 
     // Azure Speech
     @AppStorage("azureSpeechKey") var azureSpeechKey: String = ""
-    @AppStorage("azureSpeechRegion") var azureSpeechRegion: String = "eastasia"
+    @AppStorage("azureSpeechRegion") var azureSpeechRegion: String = "swedencentral"
+    @AppStorage("azureSpeechPostRefinementEnabled") var azureSpeechPostRefinementEnabled: Bool = true
 
     // Whisper (Azure OpenAI)
     @AppStorage("whisperEndpoint") var whisperEndpoint: String = ""
@@ -41,6 +42,18 @@ class AppSettings: ObservableObject {
     @AppStorage("gptRealtimeWhisperAPIKey") var gptRealtimeWhisperAPIKey: String = ""
     @AppStorage("gptRealtimeWhisperLanguage") var gptRealtimeWhisperLanguage: String = ""
     @AppStorage("gptRealtimeWhisperPrompt") var gptRealtimeWhisperPrompt: String = ""
+
+    @AppStorage("maiTranscribeEndpoint") var maiTranscribeEndpoint: String = ""
+    @AppStorage("maiTranscribeDeployment") var maiTranscribeDeployment: String = "mai-transcribe-2-streaming"
+    @AppStorage("maiTranscribeAPIKey") var maiTranscribeAPIKey: String = ""
+    @AppStorage("maiTranscribeLanguage") var maiTranscribeLanguage: String = "auto"
+    @AppStorage("maiTranscribeBatchUseAzureSpeech") var maiTranscribeBatchUseAzureSpeech: Bool = true
+    @AppStorage("maiTranscribeBatchEndpoint") var maiTranscribeBatchEndpoint: String = ""
+    @AppStorage("maiTranscribeBatchRegion") var maiTranscribeBatchRegion: String = "swedencentral"
+    @AppStorage("maiTranscribeBatchAPIKey") var maiTranscribeBatchAPIKey: String = ""
+    @AppStorage("maiTranscribeBatchLanguage") var maiTranscribeBatchLanguage: String = "auto"
+    @AppStorage("maiTranscribeBatchStyle") var maiTranscribeBatchStyle: String = "verbatim"
+    @AppStorage("maiTranscribeBatchPhrases") var maiTranscribeBatchPhrases: String = ""
 
     // MARK: - AI Settings
 
@@ -127,7 +140,8 @@ class AppSettings: ObservableObject {
         speechProvider = "apple"
         speechLanguage = "zh-CN"
         azureSpeechKey = ""
-        azureSpeechRegion = "eastasia"
+        azureSpeechRegion = "swedencentral"
+        azureSpeechPostRefinementEnabled = true
         whisperEndpoint = ""
         whisperDeployment = "whisper"
         whisperAPIKey = ""
@@ -143,6 +157,17 @@ class AppSettings: ObservableObject {
         gptRealtimeWhisperAPIKey = ""
         gptRealtimeWhisperLanguage = ""
         gptRealtimeWhisperPrompt = ""
+        maiTranscribeEndpoint = ""
+        maiTranscribeDeployment = "mai-transcribe-2-streaming"
+        maiTranscribeAPIKey = ""
+        maiTranscribeLanguage = "auto"
+        maiTranscribeBatchUseAzureSpeech = true
+        maiTranscribeBatchEndpoint = ""
+        maiTranscribeBatchRegion = "swedencentral"
+        maiTranscribeBatchAPIKey = ""
+        maiTranscribeBatchLanguage = "auto"
+        maiTranscribeBatchStyle = "verbatim"
+        maiTranscribeBatchPhrases = ""
 
         aiProvider = "openai"
         openaiAPIKey = ""

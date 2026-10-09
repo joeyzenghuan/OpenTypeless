@@ -1,290 +1,223 @@
 import Foundation
-import AVFoundation
 
 #if canImport(MicrosoftCognitiveServicesSpeech)
-import MicrosoftCognitiveServicesSpeech
+@preconcurrency import MicrosoftCognitiveServicesSpeech
 #endif
 
-/// Azure Speech Service implementation using Microsoft Cognitive Services Speech SDK
-///
-/// Setup:
-/// 1. Create an Azure account and Speech resource
-/// 2. Get the subscription key and region
-/// 3. Configure in Settings > Speech Recognition > Azure Speech Service
-///
-/// Documentation: https://learn.microsoft.com/azure/cognitive-services/speech-service/
-class AzureSpeechProvider: SpeechRecognitionProvider {
-
-    // MARK: - Protocol Properties
-
+/// Azure real-time recognition with optional service-side post-stream refinement.
+final class AzureSpeechProvider: SpeechRecognitionProvider {
     let name = "Azure Speech Service"
     let identifier = "azure"
     let supportsRealtime = true
     let supportsOffline = false
+    let supportsRecognitionStages = true
+    var usesPostStreamRefinement: Bool { AzureSpeechRefinement.isEnabled }
 
     var isAvailable: Bool {
-        guard let key = subscriptionKey, !key.isEmpty,
-              let reg = region, !reg.isEmpty else {
-            return false
-        }
-        return true
+        !subscriptionKey.isEmpty && !region.isEmpty
     }
 
-    // MARK: - Configuration
-
-    private var subscriptionKey: String?
-    private var region: String?
-
-    // MARK: - Private Properties
-
+    private var subscriptionKey: String
+    private var region: String
+    private let explicitConfiguration: Bool
     private var partialResultHandler: ((SpeechRecognitionResult) -> Void)?
     private var errorHandler: ((Error) -> Void)?
     private var statusHandler: ((String) -> Void)?
-    private var finalTranscription: String = ""
-    private var allTranscriptions: [String] = []
-    private var isRecognizing: Bool = false
-
     private let log = Logger.shared
+    // Protect recognizer/session ownership while SDK callbacks run on background threads.
+    private let stateLock = NSLock()
+    private let sdkQueue = DispatchQueue(label: "OpenTypeless.AzureSpeechSDK")
+    private var session: AzureSpeechSession?
+    private var completedPreview: String?
+    private var completedFallback: SpeechRefinementFallback?
+    var lastRefinementPreview: String? { stateLock.withLock { completedPreview } }
+    var lastRefinementFallback: SpeechRefinementFallback? { stateLock.withLock { completedFallback } }
 
     #if canImport(MicrosoftCognitiveServicesSpeech)
     private var speechRecognizer: SPXSpeechRecognizer?
     #endif
 
-    // MARK: - Initialization
-
     init(subscriptionKey: String? = nil, region: String? = nil) {
-        self.subscriptionKey = subscriptionKey ?? UserDefaults.standard.string(forKey: "azureSpeechKey")
-        self.region = region ?? UserDefaults.standard.string(forKey: "azureSpeechRegion")
-
-        log.info("Initialized - region: \(self.region ?? "not set"), key configured: \(self.subscriptionKey?.isEmpty == false ? "yes" : "no")", tag: "AzureSpeech")
+        explicitConfiguration = subscriptionKey != nil || region != nil
+        self.subscriptionKey = subscriptionKey ?? UserDefaults.standard.string(forKey: "azureSpeechKey") ?? ""
+        self.region = region ?? UserDefaults.standard.string(forKey: "azureSpeechRegion") ?? "swedencentral"
     }
-
-    // MARK: - Configuration
-
-    func configure(subscriptionKey: String, region: String) {
-        self.subscriptionKey = subscriptionKey
-        self.region = region
-    }
-
-    func reloadConfig() {
-        self.subscriptionKey = UserDefaults.standard.string(forKey: "azureSpeechKey")
-        self.region = UserDefaults.standard.string(forKey: "azureSpeechRegion")
-        log.info("Config reloaded", tag: "AzureSpeech")
-    }
-
-    // MARK: - Protocol Methods
 
     func startRecognition(language: String) async throws {
-        log.info("Starting recognition - language: \(language), region: \(region ?? "unknown")", tag: "AzureSpeech")
-        emitStatus("正在连接 Azure Speech Service...")
-
-        guard isAvailable else {
-            log.info("Not configured", tag: "AzureSpeech")
-            throw SpeechRecognitionError.apiKeyMissing
+        if !explicitConfiguration {
+            subscriptionKey = UserDefaults.standard.string(forKey: "azureSpeechKey") ?? ""
+            region = UserDefaults.standard.string(forKey: "azureSpeechRegion") ?? "swedencentral"
         }
+        region = region.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard isAvailable else { throw SpeechRecognitionError.apiKeyMissing }
+        let refinement = usesPostStreamRefinement
+        if refinement, let issue = AzureSpeechRefinement.configurationIssue(region: region, language: language) {
+            throw SpeechRecognitionError.recognitionFailed(reason: issue)
+        }
+        emitStatus("正在连接 Azure Speech...")
 
         #if canImport(MicrosoftCognitiveServicesSpeech)
-        try await startAzureRecognition(language: language)
+        let speechConfig = try SPXSpeechConfiguration(subscription: subscriptionKey, region: region)
+        speechConfig.speechRecognitionLanguage = language
+        if refinement {
+            // Microsoft returns the refined text through Recognized for each segment.
+            speechConfig.setPropertyTo("PostRefinement", by: .speechServiceResponsePostProcessingOption)
+        }
+        let recognizer = try SPXSpeechRecognizer(speechConfiguration: speechConfig, audioConfiguration: SPXAudioConfiguration())
+        let session = AzureSpeechSession(language: language, refinementEnabled: refinement)
+        let traceID = session.traceID
+        try Task.checkCancellation()
+        let installed = stateLock.withLock { () -> Bool in
+            guard self.session == nil else { return false }
+            self.session = session
+            self.completedPreview = nil
+            self.completedFallback = nil
+            self.speechRecognizer = recognizer
+            return true
+        }
+        guard installed else { throw SpeechRecognitionError.recognitionFailed(reason: "上一轮识别尚未结束") }
+
+        recognizer.addRecognizingEventHandler { [weak self, session] _, event in
+            guard let self, self.isCurrent(session) else { return }
+            let result = session.receive(text: event.result.text ?? "", offset: event.result.offset, duration: event.result.duration, isFinal: false)
+            self.log.debug("[\(traceID)] Recognizing offset=\(event.result.offset), duration=\(event.result.duration), chars=\((event.result.text ?? "").count), accepted=\(result != nil)", tag: "AzureSpeech")
+            if let result {
+                self.partialResultHandler?(result)
+            }
+        }
+        recognizer.addRecognizedEventHandler { [weak self, session] _, event in
+            guard let self, self.isCurrent(session) else { return }
+            self.log.debug("[\(traceID)] Recognized reason=\(event.result.reason.rawValue), id=\(event.result.resultId), offset=\(event.result.offset), duration=\(event.result.duration), chars=\((event.result.text ?? "").count)", tag: "AzureSpeech")
+            if event.result.reason == .noMatch,
+               let json = event.result.properties?.getPropertyBy(.speechServiceResponseJsonResult),
+               let data = json.data(using: .utf8),
+               let details = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] {
+                self.log.info("[\(traceID)] NoMatch status=\(details["RecognitionStatus"] as? String ?? "unknown")", tag: "AzureSpeech")
+            }
+            // NoMatch preserves the last preview for fallback at session completion.
+            guard event.result.reason == .recognizedSpeech else { return }
+            let result = session.receive(text: event.result.text ?? "", offset: event.result.offset, duration: event.result.duration, isFinal: true)
+            self.log.debug("[\(traceID)] Final accepted=\(result != nil); \(session.diagnosticSummary)", tag: "AzureSpeech")
+            if let result {
+                self.partialResultHandler?(result)
+            }
+        }
+        recognizer.addSessionStartedEventHandler { [weak self, session] _, _ in
+            guard let self, self.isCurrent(session) else { return }
+            self.emitStatus(refinement ? "正在听 · 最终精修已开启" : "Azure Speech 已连接，正在听...")
+        }
+        recognizer.addSessionStoppedEventHandler { [weak self, session] _, _ in
+            session.markSessionEnded()
+            self?.log.info("[\(traceID)] SessionStopped; \(session.diagnosticSummary)", tag: "AzureSpeech")
+        }
+        recognizer.addCanceledEventHandler { [weak self, session] _, event in
+            guard let self, self.isCurrent(session) else { return }
+            self.log.info("[\(traceID)] Canceled reason=\(event.reason.rawValue), code=\(event.errorCode.rawValue); \(session.diagnosticSummary)", tag: "AzureSpeech")
+            if event.reason == .error {
+                let error = SpeechRecognitionError.recognitionFailed(reason: event.errorDetails ?? "Azure Speech 连接错误")
+                let recoverable: Bool
+                switch event.errorCode {
+                case .connectionFailure, .serviceTimeout, .serviceError, .serviceUnavailable, .tooManyRequests:
+                    recoverable = true
+                default:
+                    recoverable = false
+                }
+                session.fail(error, recoveryReason: recoverable ? "Azure 精修服务或连接异常" : nil)
+                if recoverable, session.canRecoverText {
+                    self.emitStatus("精修中断，松开后使用已识别文本")
+                } else {
+                    self.errorHandler?(error)
+                }
+            } else if event.reason != .endOfStream {
+                session.fail(SpeechRecognitionError.cancelled)
+            }
+        }
+
+        do {
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                sdkQueue.async {
+                    do {
+                        guard session.isActive else { throw CancellationError() }
+                        try recognizer.startContinuousRecognition()
+                        continuation.resume()
+                    } catch { continuation.resume(throwing: error) }
+                }
+            }
+            try Task.checkCancellation()
+            log.info("[\(traceID)] Azure recognition started; post-stream refinement: \(refinement); language=\(language), region=\(region)", tag: "AzureSpeech")
+        } catch {
+            session.fail(error)
+            clear(session)
+            session.stopOnce { [sdkQueue] in sdkQueue.sync { try? recognizer.stopContinuousRecognition() } }
+            throw error
+        }
         #else
-        log.info("Azure Speech SDK not available - run 'pod install' and open .xcworkspace", tag: "AzureSpeech")
         throw SpeechRecognitionError.notAvailable
         #endif
     }
 
     func stopRecognition() async throws -> String {
-        log.info("Stopping recognition...", tag: "AzureSpeech")
-        emitStatus("正在停止 Azure Speech Service...")
-
         #if canImport(MicrosoftCognitiveServicesSpeech)
-        return try await stopAzureRecognition()
+        let active = stateLock.withLock { (session, speechRecognizer) }
+        guard let session = active.0, let recognizer = active.1 else {
+            throw SpeechRecognitionError.recognitionFailed(reason: "Azure 识别会话未启动")
+        }
+        emitStatus(session.refinementEnabled ? "正在等待最终精修..." : "正在等待最终识别结果...")
+        log.info("[\(session.traceID)] Stop requested; \(session.diagnosticSummary)", tag: "AzureSpeech")
+        defer { clear(session) }
+        let text = try await session.finish { [sdkQueue, log] in
+            do {
+                try sdkQueue.sync { try recognizer.stopContinuousRecognition() }
+                session.markStopReturned()
+                log.info("[\(session.traceID)] SDK stop returned; \(session.diagnosticSummary)", tag: "AzureSpeech")
+            } catch {
+                session.fail(error)
+            }
+        }
+        try Task.checkCancellation()
+        stateLock.withLock {
+            completedPreview = session.refinementEnabled ? session.previewText : nil
+            completedFallback = session.lastFallback
+        }
+        log.info("[\(session.traceID)] Output ready; fallback=\(session.lastFallback?.reason ?? "none"); \(session.diagnosticSummary)", tag: "AzureSpeech")
+        return text
         #else
-        return finalTranscription
+        throw SpeechRecognitionError.notAvailable
         #endif
     }
 
     func cancelRecognition() {
-        log.info("Cancelling recognition...", tag: "AzureSpeech")
-
         #if canImport(MicrosoftCognitiveServicesSpeech)
-        cancelAzureRecognition()
+        let active = stateLock.withLock { () -> (AzureSpeechSession?, SPXSpeechRecognizer?) in
+            let active = (session, speechRecognizer)
+            session = nil
+            speechRecognizer = nil
+            return active
+        }
+        active.0?.fail(CancellationError())
+        // Stop on a background thread so cancel remains responsive.
+        if let session = active.0, let recognizer = active.1 {
+            session.stopOnce { [sdkQueue] in sdkQueue.sync { try? recognizer.stopContinuousRecognition() } }
+        }
         #endif
-
-        finalTranscription = ""
-        allTranscriptions = []
-        isRecognizing = false
     }
 
-    func onPartialResult(_ handler: @escaping (SpeechRecognitionResult) -> Void) {
-        partialResultHandler = handler
+    private func isCurrent(_ session: AzureSpeechSession) -> Bool {
+        stateLock.withLock { self.session === session }
     }
 
-    func onError(_ handler: @escaping (Error) -> Void) {
-        errorHandler = handler
-    }
-
-    func onStatus(_ handler: @escaping (String) -> Void) {
-        statusHandler = handler
-    }
-
-    // MARK: - Azure Speech SDK Implementation
-
-    #if canImport(MicrosoftCognitiveServicesSpeech)
-
-    private func startAzureRecognition(language: String) async throws {
-        guard let key = subscriptionKey, let reg = region else {
-            throw SpeechRecognitionError.apiKeyMissing
-        }
-
-        // Create speech configuration
-        emitStatus("正在配置 Azure Speech Service...")
-        let speechConfig: SPXSpeechConfiguration
-        do {
-            speechConfig = try SPXSpeechConfiguration(subscription: key, region: reg)
-        } catch {
-            log.info("Failed to create speech config: \(error)", tag: "AzureSpeech")
-            throw SpeechRecognitionError.recognitionFailed(reason: error.localizedDescription)
-        }
-
-        // Set recognition language
-        speechConfig.speechRecognitionLanguage = language
-        log.debug("Speech config created with language: \(language)", tag: "AzureSpeech")
-
-        // Create audio configuration (from default microphone)
-        let audioConfig = SPXAudioConfiguration()
-        log.debug("Audio config created (default microphone)", tag: "AzureSpeech")
-
-        // Create speech recognizer
-        do {
-            speechRecognizer = try SPXSpeechRecognizer(speechConfiguration: speechConfig, audioConfiguration: audioConfig)
-        } catch {
-            log.info("Failed to create recognizer: \(error)", tag: "AzureSpeech")
-            throw SpeechRecognitionError.recognitionFailed(reason: error.localizedDescription)
-        }
-
-        guard let recognizer = speechRecognizer else {
-            throw SpeechRecognitionError.notAvailable
-        }
-
-        // Reset state
-        finalTranscription = ""
-        allTranscriptions = []
-        isRecognizing = true
-
-        // Add recognizing event handler (partial results)
-        recognizer.addRecognizingEventHandler { [weak self] _, evt in
-            guard let self = self else { return }
-            let text = evt.result.text ?? ""
-            self.log.debug("Recognizing: \(text)", tag: "AzureSpeech")
-            if !text.isEmpty {
-                self.emitStatus("检测到语音，正在识别...")
-            }
-
-            // Update transcription
-            let previousText = self.allTranscriptions.joined(separator: "")
-            let fullText = previousText + text
-            self.finalTranscription = fullText
-
-            let result = SpeechRecognitionResult(
-                text: fullText,
-                isFinal: false,
-                confidence: nil,
-                language: language
-            )
-            self.partialResultHandler?(result)
-        }
-
-        // Add recognized event handler (final results for each utterance)
-        recognizer.addRecognizedEventHandler { [weak self] _, evt in
-            guard let self = self else { return }
-            let text = evt.result.text ?? ""
-
-            if !text.isEmpty {
-                self.log.debug("Recognized: \(text)", tag: "AzureSpeech")
-                self.emitStatus("Azure Speech Service 已连接，正在听...")
-                self.allTranscriptions.append(text)
-                self.finalTranscription = self.allTranscriptions.joined(separator: "")
-
-                let result = SpeechRecognitionResult(
-                    text: self.finalTranscription,
-                    isFinal: true,
-                    confidence: nil,
-                    language: language
-                )
-                self.partialResultHandler?(result)
-            }
-        }
-
-        // Add canceled event handler
-        recognizer.addCanceledEventHandler { [weak self] _, evt in
-            guard let self = self else { return }
-            self.log.info("Canceled: \(evt.reason.rawValue)", tag: "AzureSpeech")
-
-            if evt.reason == SPXCancellationReason.error {
-                let errorDetails = evt.errorDetails ?? "Unknown error"
-                self.log.info("Error: \(errorDetails)", tag: "AzureSpeech")
-                let error = SpeechRecognitionError.recognitionFailed(reason: errorDetails)
-                self.emitStatus("Azure Speech Service 连接错误")
-                self.errorHandler?(error)
-            }
-        }
-
-        // Start continuous recognition
-        log.info("Starting continuous recognition...", tag: "AzureSpeech")
-        emitStatus("正在启动 Azure Speech Service 实时识别...")
-        do {
-            try recognizer.startContinuousRecognition()
-            emitStatus("Azure Speech Service 已连接，正在听...")
-            log.info("Continuous recognition started", tag: "AzureSpeech")
-        } catch {
-            log.info("Failed to start recognition: \(error)", tag: "AzureSpeech")
-            emitStatus("Azure Speech Service 启动失败")
-            throw SpeechRecognitionError.recognitionFailed(reason: error.localizedDescription)
+    private func clear(_ session: AzureSpeechSession) {
+        stateLock.withLock {
+            guard self.session === session else { return }
+            self.session = nil
+            #if canImport(MicrosoftCognitiveServicesSpeech)
+            speechRecognizer = nil
+            #endif
         }
     }
 
-    private func stopAzureRecognition() async throws -> String {
-        guard let recognizer = speechRecognizer else {
-            return finalTranscription
-        }
-
-        // Stop continuous recognition
-        do {
-            try recognizer.stopContinuousRecognition()
-            log.info("Continuous recognition stopped", tag: "AzureSpeech")
-            emitStatus("Azure Speech Service 已停止")
-        } catch {
-            log.info("Failed to stop recognition: \(error)", tag: "AzureSpeech")
-            emitStatus("Azure Speech Service 停止失败")
-        }
-
-        // Wait a moment for final results
-        try await Task.sleep(nanoseconds: 200_000_000) // 0.2 seconds
-
-        isRecognizing = false
-        speechRecognizer = nil
-
-        log.debug("All segments: \(allTranscriptions)", tag: "AzureSpeech")
-        log.info("Final combined: \(finalTranscription)", tag: "AzureSpeech")
-
-        return finalTranscription
-    }
-
-    private func cancelAzureRecognition() {
-        guard let recognizer = speechRecognizer else { return }
-
-        do {
-            try recognizer.stopContinuousRecognition()
-        } catch {
-            log.info("Error stopping recognition: \(error)", tag: "AzureSpeech")
-        }
-
-        isRecognizing = false
-        speechRecognizer = nil
-    }
-
-    #endif
-
-    private func emitStatus(_ message: String) {
-        statusHandler?(message)
-    }
+    func onPartialResult(_ handler: @escaping (SpeechRecognitionResult) -> Void) { partialResultHandler = handler }
+    func onError(_ handler: @escaping (Error) -> Void) { errorHandler = handler }
+    func onStatus(_ handler: @escaping (String) -> Void) { statusHandler = handler }
+    private func emitStatus(_ message: String) { statusHandler?(message) }
 }

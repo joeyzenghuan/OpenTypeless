@@ -4,7 +4,7 @@
   <img src="https://img.shields.io/badge/platform-macOS_13.0+-blue" alt="Platform">
   <img src="https://img.shields.io/badge/swift-5.9+-orange" alt="Swift">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
-  <img src="https://img.shields.io/badge/version-0.1.0-brightgreen" alt="Version">
+  <img src="https://img.shields.io/badge/version-0.4.0-brightgreen" alt="Version">
 </p>
 
 <p align="center">
@@ -22,7 +22,7 @@
 ## 功能特性
 
 - **语音转文字** — 按住 `fn` 键说话，松开后文字自动插入光标位置
-- **多语音引擎** — 支持 Apple Speech（免费离线）、Azure Speech（实时流式）、Azure OpenAI Whisper、GPT-4o Transcribe
+- **多语音引擎** — 支持 Apple Speech（免费离线）、Azure Speech（实时流式）、Azure OpenAI Whisper、GPT-4o Transcribe、MAI Transcribe 2（流式与非流式）
 - **AI 智能润色** — 语音识别后可通过 LLM 自动修正错别字、添加标点、分条列点、去重
 - **浮动面板** — 实时显示录音状态和识别结果，支持取消操作
 - **历史记录** — SQLite 持久化存储，支持搜索、回放录音、对比原文与润色后文本
@@ -61,6 +61,51 @@ OpenTypeless 通过模拟键盘粘贴（Cmd+V）来插入文字，需要辅助�
 | Azure Speech Service | ✅ | ❌ | 高精度、实时流式、100+ 语言，需 Azure 订阅 |
 | Azure OpenAI Whisper | ❌ | ❌ | 高精度多语言，录音结束后整段转写，需部署 Whisper 模型 |
 | GPT-4o Transcribe | ❌ | ❌ | 比 Whisper 更高精度，支持置信度评分和提示词引导（推荐） |
+| MAI Transcribe 2 | ❌ | ❌ | 完整音频转写，支持 Verbatim/Clean 和术语提示，使用 Azure Speech Key（公共预览） |
+| MAI Transcribe 2 Streaming | ✅ | ❌ | 微软实时流式转写，支持自动语言检测，需 Foundry 模型部署（公共预览） |
+
+### MAI Transcribe 2（非流式）
+
+在设置 → 语音中选择 **MAI Transcribe 2 (非流式，预览)**。默认使用现有 Azure Speech Key 和区域；也可关闭共用开关，填写独立 Key、区域或可选的 HTTPS 资源根地址。Key 必须对应所填区域或资源。共用模式下修改 Key 或区域也会影响 Azure Speech。
+
+录音结束后上传 16kHz 单声道 WAV，调用 Speech Fast Transcription 的 `/speechtotext/transcriptions:transcribe?api-version=2025-10-15`，使用 `Ocp-Apim-Subscription-Key` 请求头并明确指定 `enhancedMode.enabled=true`、`enhancedMode.model=MAI-Transcribe-2`，不需要 OpenAI Deployment。只使用 `combinedPhrases` 的最终文本进入润色、粘贴和历史流程，失败或取消不会插入文本。
+
+默认自动检测语言；指定语言会成为强提示，中英混合建议使用自动检测。可选择 **Verbatim** 保留逐字文本，或 **Clean** 清理语气词；这些是模型转写选项，与后续 AI 润色独立。术语提示每行一个。音频须短于 2 小时、小于 250 MB。服务为公共预览，无 SLA；区域可用性与限制详见[微软 MAI Transcribe 文档](https://learn.microsoft.com/azure/ai-services/speech-service/mai-transcribe)。
+
+### MAI Transcribe 2 Streaming
+
+在设置 → 语音中选择 **MAI Transcribe 2 Streaming (预览)**，填写 Microsoft Foundry 资源根地址（例如 `https://your-resource.services.ai.azure.com`）、实际部署名称和该资源的 API Key。默认部署名称为 `mai-transcribe-2-streaming`；如果在 Foundry 中使用了其他名称，请填写实际名称。默认自动检测语言，也可跟随全局设置或指定语言提示。中文提示发送为 `zh`。
+
+此 Provider 使用原生 WebSocket，连接 `/mai/v1/realtime?intent=transcription`，API Key 放在请求头中，不需要升级 Azure Speech SDK。麦克风音频转换为 16kHz 单声道 PCM16，在服务确认会话配置后按顺序发送。MAI 的中间文本是可替换的后缀，而非追加片段；浮窗会显示已确定文本与最新预览的组合。
+
+松开快捷键后，应用停止采集，排空已录音频，提交 `input_audio_buffer.commit`，等待 `completed` 中的完整最终文本，再进入现有 AI 润色、粘贴和历史保存流程。提交确认、部分结果或短暂静默都不代表转写已完成。连接错误、最终结果超时、音频发送积压或取消时，不会将不完整预览当作最终结果粘贴；缺少配置时明确报错，不会静默切换引擎。
+
+服务当前为公共预览，无 SLA，单次会话最多 1 小时。连接和最终转写等待使用“请求超时”设置（最低 10 秒）。语言检测、可用区域和服务限制以[微软 MAI Realtime 文档](https://learn.microsoft.com/azure/ai-services/speech-service/mai-transcribe-2-streaming-realtime)为准。此接口不复用 GPT Realtime Whisper 的 Prompt 或服务端自动断句配置。
+
+自动检测时省略 `language` 字段：实际 Azure 网关拒绝文档示例中的显式 `null`。指定语言时仍发送对应的语言代码。
+
+### MAI 测试
+
+- `./scripts/test-mai-transcribe.sh`：离线验证两种 Provider 的认证头、配置、PCM16 转换、multipart、响应解析、握手、预览替换、最终提交、延迟结果、超时和取消；无需 Azure Key、麦克风或剪贴板权限。
+- `./scripts/test-mai-transcribe-live.sh [all|batch|streaming]`：调用真实 Azure 服务，会产生按量费用。使用 macOS Tingting/Samantha 合成中英文短音频，不上传历史录音、不访问麦克风、不粘贴文本、不改设置、不创建部署。临时音频和测试程序在结束后删除。
+- 实测默认只在内存读取本机应用偏好中的凭据。可以成对设置 `AZURE_MAI_BATCH_ENDPOINT` / `AZURE_MAI_BATCH_API_KEY` 和 `AZURE_MAI_ENDPOINT` / `AZURE_MAI_API_KEY` 覆盖；流式部署通过 `AZURE_MAI_DEPLOYMENT_NAME` 指定。不要把 Key 写入仓库、命令参数或日志。
+- 流式测试优先使用 MAI 设置；未配置时尝试现有 GPT Realtime Whisper / GPT-4o Transcribe 的 Foundry 资源凭据，但不会把其他转写部署当作 MAI 部署。必须先在该资源部署流式模型。
+
+2026-10-09 的非流式四项实测与流式中英文实测均已通过；流式部署在用户授权后创建。部署配置、耗时口径和结果见[MAI 实测记录](docs/mai-transcribe-testing.md)。
+
+### Azure 标准识别与最终精修
+
+事件格式、两秒停顿示例、双行 UI 和最终粘贴规则详见[识别事件笔记](docs/azure-speech-recognition-events.md)。
+
+Azure 标准模式和 Post-stream refinement 模式均通过 `Recognizing` 返回可变化的中间文本，通过 `Recognized` 返回每个语音段的最终文本。浮窗在两种模式下都上下展示：上方保留各段最后一次实时预览，下方累积最终结果；标准模式标记「Azure 标准识别」，Post 模式标记「Azure 精修」。句间停顿可能结束一个语音段，但不会结束整次录音；`SessionStopped` 才代表会话结束。标准最终结果也可能修正中间识别并添加标点，Post 则额外运行第二遍识别，替换每段的最终结果，不增加第三类精修回调。两种模式的最终文本可能相同。
+
+Azure Speech 默认开启 **最终精修（Post-stream refinement）**，使用当前识别语言的单语言模式。说话时显示低延迟的“实时预览”，Azure 利用更完整的音频上下文做第二遍识别，通过每段的最终结果返回精修文本。浮窗分开显示两阶段内容，历史记录提供“精修对照”。短句的精修结果可能与预览一致。
+
+松开快捷键后，应用等待最终结果和识别会话结束，立即发起粘贴；历史记录在粘贴后保存，浮窗继续展示 1.5 秒，不阻塞文本插入。开启精修时，若缺少最终结果、等待超时或服务连接异常，则保留已精修段的最终文本，未完成的段使用已有中间识别文本，浮窗和历史均标记「未完整精修」。降级内容可能不完整，请检查后使用。用户取消、配置错误或没有可用文字时不输出。成功精修后可继续 AI 润色；降级时跳过 AI 润色，立即保留文字。辅助功能权限未生效时也会写入剪贴板，并提示手动粘贴。此功能使用 Speech 服务，无需另配 Azure OpenAI。
+
+需要受支持的区域及语言，例如 `swedencentral` + `zh-CN`。配置不受支持时会提示错误；可在语音设置关闭精修，使用标准识别。支持列表参见 [微软文档](https://learn.microsoft.com/azure/ai-services/speech-service/how-to-recognize-speech#post-stream-refinement)。本项目要求 Speech SDK **1.51.2+（1.51.x）**；升级已有工作区时运行 `pod update MicrosoftCognitiveServicesSpeech-macOS`，然后打开 `.xcworkspace`。
+
+运行 `./scripts/test-azure-refinement.sh` 可验证延迟最终结果、音频时间偏移、多段拼接、精修失败降级、取消/配置错误时阻止输出，以及历史数据库迁移。测试使用临时数据库，不需要 Azure Key，也不修改剪贴板。Azure 回调日志记录事件原因、时间偏移、段落状态及降级原因，便于区分服务未返回最终结果与 App 合并问题。
 
 ## AI 润色引擎
 

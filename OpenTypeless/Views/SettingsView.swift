@@ -191,6 +191,8 @@ struct SpeechProviderSettingsView: View {
     @AppStorage("speechProvider") private var speechProvider = "apple"
     @AppStorage("azureSpeechKey") private var azureSpeechKey = ""
     @AppStorage("azureSpeechRegion") private var azureSpeechRegion = "swedencentral"
+    @AppStorage("azureSpeechPostRefinementEnabled") private var azureSpeechPostRefinementEnabled = true
+    @AppStorage("speechLanguage") private var speechLanguage = "zh-CN"
     @AppStorage("whisperEndpoint") private var whisperEndpoint = ""
     @AppStorage("whisperDeployment") private var whisperDeployment = "whisper"
     @AppStorage("whisperAPIKey") private var whisperAPIKey = ""
@@ -206,6 +208,17 @@ struct SpeechProviderSettingsView: View {
     @AppStorage("gptRealtimeWhisperAPIKey") private var gptRealtimeWhisperAPIKey = ""
     @AppStorage("gptRealtimeWhisperLanguage") private var gptRealtimeWhisperLanguage = ""
     @AppStorage("gptRealtimeWhisperPrompt") private var gptRealtimeWhisperPrompt = ""
+    @AppStorage("maiTranscribeEndpoint") private var maiTranscribeEndpoint = ""
+    @AppStorage("maiTranscribeDeployment") private var maiTranscribeDeployment = "mai-transcribe-2-streaming"
+    @AppStorage("maiTranscribeAPIKey") private var maiTranscribeAPIKey = ""
+    @AppStorage("maiTranscribeLanguage") private var maiTranscribeLanguage = "auto"
+    @AppStorage("maiTranscribeBatchUseAzureSpeech") private var maiTranscribeBatchUseAzureSpeech = true
+    @AppStorage("maiTranscribeBatchEndpoint") private var maiTranscribeBatchEndpoint = ""
+    @AppStorage("maiTranscribeBatchRegion") private var maiTranscribeBatchRegion = "swedencentral"
+    @AppStorage("maiTranscribeBatchAPIKey") private var maiTranscribeBatchAPIKey = ""
+    @AppStorage("maiTranscribeBatchLanguage") private var maiTranscribeBatchLanguage = "auto"
+    @AppStorage("maiTranscribeBatchStyle") private var maiTranscribeBatchStyle = "verbatim"
+    @AppStorage("maiTranscribeBatchPhrases") private var maiTranscribeBatchPhrases = ""
 
     var body: some View {
         Form {
@@ -220,6 +233,16 @@ struct SpeechProviderSettingsView: View {
                         Image(systemName: "dot.radiowaves.left.and.right")
                         Text("GPT Realtime Whisper")
                     }.tag("gpt-realtime-whisper")
+
+                    HStack {
+                        Image(systemName: "waveform.badge.mic")
+                        Text("MAI Transcribe 2 Streaming (预览)")
+                    }.tag("mai-transcribe-2-streaming")
+
+                    HStack {
+                        Image(systemName: "waveform")
+                        Text("MAI Transcribe 2 (非流式预览)")
+                    }.tag("mai-transcribe-2")
 
                     HStack {
                         Image(systemName: "cloud")
@@ -268,6 +291,20 @@ struct SpeechProviderSettingsView: View {
                         description: "比 Whisper 更高精度的转写模型。支持可选的置信度评分（logprobs）和提示词引导。需要 Azure OpenAI 资源并部署 gpt-4o-transcribe 模型。",
                         color: .indigo
                     )
+                case "mai-transcribe-2-streaming":
+                    ProviderInfoBox(
+                        icon: "waveform.badge.mic",
+                        title: "MAI Transcribe 2 Streaming",
+                        description: "微软实时流式转写，支持 60 种语言和自动语言检测。按住说话时显示预览，松开后等待最终文本。需要 Microsoft Foundry 资源及模型部署。当前为公共预览，无 SLA。",
+                        color: .teal
+                    )
+                case "mai-transcribe-2":
+                    ProviderInfoBox(
+                        icon: "waveform",
+                        title: "MAI Transcribe 2",
+                        description: "录音结束后上传完整音频进行转写，不返回实时预览。支持自动语言检测、逐字或清洁转写，以及术语提示。使用 Azure Speech Fast Transcription，无需填写 OpenAI Deployment。当前为公共预览，无 SLA。",
+                        color: .teal
+                    )
                 case "gpt-realtime-whisper":
                     ProviderInfoBox(
                         icon: "dot.radiowaves.left.and.right",
@@ -286,6 +323,23 @@ struct SpeechProviderSettingsView: View {
                     SecureField("API Key", text: $azureSpeechKey)
                     TextField("Region", text: $azureSpeechRegion)
                         .textFieldStyle(.roundedBorder)
+
+                    Toggle("最终精修（Post-stream refinement）", isOn: $azureSpeechPostRefinementEnabled)
+                    Text("实时预览保持低延迟；Azure 利用更完整的音频上下文进行第二遍识别。精修完成后立即粘贴；缺少精修结果、超时或服务连接异常时，使用已有识别文本，并标记「未完整精修」。")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Text("使用当前识别语言的单语言精修。长句通常更受益，短句可能没有变化。独立于「AI 润色」；同时开启时，AI 会继续处理成功精修后的文本。精修失败时直接输出已有文字，不再等待 AI 润色。")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    if azureSpeechPostRefinementEnabled,
+                       let issue = AzureSpeechRefinement.configurationIssue(region: azureSpeechRegion, language: speechLanguage) {
+                        Label(issue, systemImage: "exclamationmark.triangle")
+                            .font(.caption)
+                            .foregroundColor(.orange)
+                    }
+                    Link("查看精修支持的区域与语言",
+                         destination: URL(string: "https://learn.microsoft.com/azure/ai-services/speech-service/how-to-recognize-speech#post-stream-refinement")!)
+                        .font(.caption)
 
                     Link("获取 Azure Speech API Key",
                          destination: URL(string: "https://azure.microsoft.com/products/cognitive-services/speech-services")!)
@@ -393,7 +447,93 @@ struct SpeechProviderSettingsView: View {
                 }
             }
 
-            // GPT Realtime Whisper Settings
+            if speechProvider == "mai-transcribe-2" {
+                Section("MAI Transcribe 2 非流式设置") {
+                    Toggle("使用现有 Azure Speech Key 和区域", isOn: $maiTranscribeBatchUseAzureSpeech)
+                    if maiTranscribeBatchUseAzureSpeech {
+                        SecureField("Azure Speech Key", text: $azureSpeechKey)
+                            .textFieldStyle(.roundedBorder)
+                        TextField("Azure Speech Region", text: $azureSpeechRegion)
+                            .textFieldStyle(.roundedBorder)
+                        Text("与 Azure Speech Service 共用配置。更改此处的 Key 或区域也会影响 Azure Speech。")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    } else {
+                        SecureField("API Key", text: $maiTranscribeBatchAPIKey)
+                            .textFieldStyle(.roundedBorder)
+                        TextField("Region", text: $maiTranscribeBatchRegion)
+                            .textFieldStyle(.roundedBorder)
+                        TextField("Resource Endpoint（可选）", text: $maiTranscribeBatchEndpoint)
+                            .textFieldStyle(.roundedBorder)
+                        Text("可填写 https://your-resource.cognitiveservices.azure.com；留空时使用区域端点。Key 必须属于所选资源或区域。")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+
+                    maiLanguagePicker(selection: $maiTranscribeBatchLanguage)
+
+                    Picker("转写风格", selection: $maiTranscribeBatchStyle) {
+                        Text("逐字保留（Verbatim）").tag("verbatim")
+                        Text("清洁文本（Clean）").tag("clean")
+                    }
+
+                    Text("Clean 可去除语气词，使文本更易读；这是转写模型选项，与后续 AI 润色独立。")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("术语提示（每行一个）")
+                        TextEditor(text: $maiTranscribeBatchPhrases)
+                            .font(.system(size: 12, design: .monospaced))
+                            .frame(minHeight: 60)
+                            .border(Color.gray.opacity(0.3))
+                    }
+
+                    Text("默认自动检测。指定语言是强提示，混合语言录音建议自动检测。录音须短于 2 小时、小于 250 MB。")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    Link("微软 MAI Transcribe 2 文档",
+                         destination: URL(string: "https://learn.microsoft.com/azure/ai-services/speech-service/mai-transcribe")!)
+                        .font(.caption)
+                }
+            }
+
+            if speechProvider == "mai-transcribe-2-streaming" {
+                Section("MAI Transcribe 设置") {
+                    TextField("Foundry Endpoint URL", text: $maiTranscribeEndpoint)
+                        .textFieldStyle(.roundedBorder)
+
+                    Text("例如: https://your-resource.services.ai.azure.com。填写资源根地址，不是 Azure OpenAI 的 /openai 路径。")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    TextField("Deployment Name", text: $maiTranscribeDeployment)
+                        .textFieldStyle(.roundedBorder)
+
+                    Text("填写 Foundry 中的实际部署名称；仅当部署名称与模型名一致时使用 mai-transcribe-2-streaming。")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    SecureField("API Key", text: $maiTranscribeAPIKey)
+                        .textFieldStyle(.roundedBorder)
+
+                    maiLanguagePicker(selection: $maiTranscribeLanguage)
+
+                    Text("默认自动检测；指定语言时作为语言提示发送，中文使用 zh（简体）。此接入不发送 Prompt，由应用手动提交最终转写。")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    Text("单次会话最长 1 小时。最终结果超时或连接失败时不粘贴预览文本；请检查配置和网络后重试。")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    Link("微软 MAI Realtime 接入文档",
+                         destination: URL(string: "https://learn.microsoft.com/azure/ai-services/speech-service/mai-transcribe-2-streaming-realtime")!)
+                        .font(.caption)
+                }
+            }
+
             if speechProvider == "gpt-realtime-whisper" {
                 Section("GPT Realtime Whisper 设置") {
                     TextField("Endpoint URL", text: $gptRealtimeWhisperEndpoint)
@@ -445,6 +585,21 @@ struct SpeechProviderSettingsView: View {
         }
         .formStyle(.grouped)
         .padding()
+    }
+
+    private func maiLanguagePicker(selection: Binding<String>) -> some View {
+        Picker("Language", selection: selection) {
+            Text("自动检测（支持多语言）").tag("auto")
+            Text("跟随全局设置").tag("")
+            Text("简体中文").tag("zh")
+            Text("English").tag("en")
+            Text("日本語").tag("ja")
+            Text("한국어").tag("ko")
+            Text("Français").tag("fr")
+            Text("Deutsch").tag("de")
+            Text("Español").tag("es")
+            Text("Português").tag("pt")
+        }
     }
 }
 

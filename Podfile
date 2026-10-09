@@ -4,7 +4,8 @@ target 'OpenTypeless' do
   use_frameworks!
 
   # Azure Cognitive Services Speech SDK
-  pod 'MicrosoftCognitiveServicesSpeech-macOS', '~> 1.40'
+  # PostRefinement is rejected by older SDKs (including 1.48.1).
+  pod 'MicrosoftCognitiveServicesSpeech-macOS', '~> 1.51.2'
 end
 
 post_install do |installer|
