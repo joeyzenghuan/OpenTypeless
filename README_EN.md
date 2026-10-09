@@ -4,7 +4,7 @@
   <img src="https://img.shields.io/badge/platform-macOS_13.0+-blue" alt="Platform">
   <img src="https://img.shields.io/badge/swift-5.9+-orange" alt="Swift">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
-  <img src="https://img.shields.io/badge/version-0.3.0-brightgreen" alt="Version">
+  <img src="https://img.shields.io/badge/version-0.4.0-brightgreen" alt="Version">
 </p>
 
 <p align="center">
@@ -22,7 +22,7 @@
 ## Features
 
 - **Voice to Text** — Hold `fn` to speak, release to insert text at cursor position
-- **Multiple STT Engines** — Apple Speech (free, offline), Azure Speech (real-time streaming), Azure OpenAI Whisper, GPT-4o Transcribe
+- **Multiple STT Engines** — Apple Speech (free, offline), Azure Speech (real-time streaming), Azure OpenAI Whisper, GPT-4o Transcribe, MAI Transcribe 2 (streaming and non-streaming)
 - **AI Polish** — Automatically fix typos, add punctuation, format lists, and remove duplicates via LLM
 - **Floating Panel** — Real-time display of recording status and transcription results, with cancel support
 - **History** — SQLite-backed persistent storage with search, audio playback, and original/polished text comparison
@@ -61,6 +61,16 @@ OpenTypeless inserts text by simulating keyboard paste (Cmd+V), which requires A
 | Azure Speech Service | ✅ | ❌ | High accuracy, real-time streaming, 100+ languages, requires Azure subscription |
 | Azure OpenAI Whisper | ❌ | ❌ | High accuracy multilingual, sends complete audio after recording, requires Whisper model deployment |
 | GPT-4o Transcribe | ❌ | ❌ | Higher accuracy than Whisper, supports confidence scores and prompt guidance (recommended) |
+| MAI Transcribe 2 | ❌ | ❌ | Full-audio transcription via Azure Speech, Verbatim/Clean styles and terminology hints (public preview) |
+| MAI Transcribe 2 Streaming | ✅ | ❌ | Live previews and explicit finalization, requires a Foundry model deployment (public preview) |
+
+### MAI Transcribe 2
+
+Select the non-streaming MAI provider in Settings → Speech. It defaults to the existing Azure Speech key and region; disable sharing to configure independent credentials and an optional resource root endpoint. It records mono 16kHz WAV and uploads after recording stops. The Speech Fast Transcription request explicitly selects `MAI-Transcribe-2` through `enhancedMode`, with no OpenAI deployment required. Choose automatic language detection or a strong language hint, Verbatim/Clean style, and optional terminology hints (one per line). Clean transcription is independent of AI polish.
+
+The streaming provider uses the Foundry resource root, actual streaming deployment name and resource API key. It sends raw PCM16 over `/mai/v1/realtime?intent=transcription`, waits for `session.updated` before sending audio, and accepts only `completed` as final text after an explicit commit. Automatic detection omits the language field because the live Azure gateway rejects an explicit `null`. Failures, timeout and cancellation never paste provisional text.
+
+Run `./scripts/test-mai-transcribe.sh` for offline regression tests. Run `./scripts/test-mai-transcribe-live.sh [all|batch|streaming]` for real Azure tests, which incur usage charges and use generated Chinese/English fixtures only. The live runner reads local application credentials in memory, never changes settings or creates deployments, and removes its temporary files. Endpoint/key overrides must be paired: `AZURE_MAI_BATCH_ENDPOINT` / `AZURE_MAI_BATCH_API_KEY` and `AZURE_MAI_ENDPOINT` / `AZURE_MAI_API_KEY`; use `AZURE_MAI_DEPLOYMENT_NAME` for the streaming deployment. Four non-streaming cases and both Chinese/English streaming cases passed real Azure tests on October 9, 2026, after the user authorized creation of the streaming deployment. See the [live test record (Chinese)](docs/mai-transcribe-testing.md) for deployment details and measurement scope.
 
 ### Azure Standard Recognition and Post-stream Refinement
 

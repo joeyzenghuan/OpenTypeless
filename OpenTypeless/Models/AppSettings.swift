@@ -43,6 +43,18 @@ class AppSettings: ObservableObject {
     @AppStorage("gptRealtimeWhisperLanguage") var gptRealtimeWhisperLanguage: String = ""
     @AppStorage("gptRealtimeWhisperPrompt") var gptRealtimeWhisperPrompt: String = ""
 
+    @AppStorage("maiTranscribeEndpoint") var maiTranscribeEndpoint: String = ""
+    @AppStorage("maiTranscribeDeployment") var maiTranscribeDeployment: String = "mai-transcribe-2-streaming"
+    @AppStorage("maiTranscribeAPIKey") var maiTranscribeAPIKey: String = ""
+    @AppStorage("maiTranscribeLanguage") var maiTranscribeLanguage: String = "auto"
+    @AppStorage("maiTranscribeBatchUseAzureSpeech") var maiTranscribeBatchUseAzureSpeech: Bool = true
+    @AppStorage("maiTranscribeBatchEndpoint") var maiTranscribeBatchEndpoint: String = ""
+    @AppStorage("maiTranscribeBatchRegion") var maiTranscribeBatchRegion: String = "swedencentral"
+    @AppStorage("maiTranscribeBatchAPIKey") var maiTranscribeBatchAPIKey: String = ""
+    @AppStorage("maiTranscribeBatchLanguage") var maiTranscribeBatchLanguage: String = "auto"
+    @AppStorage("maiTranscribeBatchStyle") var maiTranscribeBatchStyle: String = "verbatim"
+    @AppStorage("maiTranscribeBatchPhrases") var maiTranscribeBatchPhrases: String = ""
+
     // MARK: - AI Settings
 
     @AppStorage("aiProvider") var aiProvider: String = "openai"
@@ -145,6 +157,17 @@ class AppSettings: ObservableObject {
         gptRealtimeWhisperAPIKey = ""
         gptRealtimeWhisperLanguage = ""
         gptRealtimeWhisperPrompt = ""
+        maiTranscribeEndpoint = ""
+        maiTranscribeDeployment = "mai-transcribe-2-streaming"
+        maiTranscribeAPIKey = ""
+        maiTranscribeLanguage = "auto"
+        maiTranscribeBatchUseAzureSpeech = true
+        maiTranscribeBatchEndpoint = ""
+        maiTranscribeBatchRegion = "swedencentral"
+        maiTranscribeBatchAPIKey = ""
+        maiTranscribeBatchLanguage = "auto"
+        maiTranscribeBatchStyle = "verbatim"
+        maiTranscribeBatchPhrases = ""
 
         aiProvider = "openai"
         openaiAPIKey = ""

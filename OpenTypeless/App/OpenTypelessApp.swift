@@ -243,6 +243,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 didFallback = true
                 fallbackFrom = "GPT-4o Transcribe"
             }
+        case "mai-transcribe-2-streaming":
+            log.info("Using MAI Transcribe 2 Streaming", tag: "App")
+            speechProvider = MAITranscribeSpeechProvider()
+        case "mai-transcribe-2":
+            log.info("Using MAI Transcribe 2", tag: "App")
+            speechProvider = MAITranscribeBatchSpeechProvider()
         case "gpt-realtime-whisper":
             log.info("Using GPT Realtime Whisper", tag: "App")
             let provider = GPTRealtimeWhisperSpeechProvider()

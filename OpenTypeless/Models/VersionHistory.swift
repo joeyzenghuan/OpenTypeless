@@ -32,6 +32,19 @@ struct VersionHistoryEntry: Identifiable {
 enum VersionHistory {
     static let entries: [VersionHistoryEntry] = [
         VersionHistoryEntry(
+            version: "0.4.0",
+            build: "4",
+            date: "2026-10-09",
+            title: "MAI 双模式语音转写",
+            changes: [
+                "新增 MAI Transcribe 2 Streaming，录音时显示实时预览，停止后等待完整最终文本再插入。",
+                "新增 MAI Transcribe 2 非流式转写，支持逐字或清洁文本、术语提示和录音历史保存。",
+                "两种 MAI 引擎均支持自动语言检测和语言提示，非流式可共用现有 Azure Speech 配置。",
+                "实时显示连接、识别和最终转写状态；错误、超时或取消时不插入不完整的预览。",
+                "完成真实 Azure 中英文转写测试及 macOS 手动测试，新增两种引擎的回归测试和实测记录。"
+            ]
+        ),
+        VersionHistoryEntry(
             version: "0.3.0",
             build: "3",
             date: "2026-09-19",
